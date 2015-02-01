@@ -30,5 +30,11 @@ duration is defined when a new instance is initialized calling
 The lifetime of a value can be modified calling 'SetItemDuration()'. The
 expiration time of a value is automatically updated when its value is retrieved
 by the following methods: 'GetItem()', 'SetItem()' and 'SetItemDuration()'.
+
+TokenStore
+
+A TokenStore provides session tokens to uniquely identify an user session. Each
+token expires automatically if it is not used after defined time. The tokens for
+authenticated sessions may have a distinct expiration time.
 */
 package appcontext
