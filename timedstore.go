@@ -52,19 +52,24 @@ func (s *TimedStore) GetValue(id string) (interface{}, error) {
 	return v.value, nil
 }
 
-func (s *TimedStore) NewValue(id string, value interface{}) *TimedValue {
+func (s *TimedStore) NewValue(id string, value interface{}) (*TimedValue, error) {
 	s.removeExpired()
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if _, ok := s.values[id]; ok {
+		return nil, errors.New(
+			"Could not allocate the new value because of duplicated id")
+	}
+
 	i := &TimedValue{
 		expireAt: time.Now().Add(s.duration),
 		duration: s.duration,
 		value:    value,
 	}
 
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	s.values[id] = i
-
-	return i
+	return i, nil
 }
 
 func (s *TimedStore) removeExpired() {
