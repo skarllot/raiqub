@@ -1,21 +1,21 @@
-# ContextStore
+# AppContext
 
-ContextStore is a library for the [Go Programming Language][go]. It provides
-a special application context store that offers expirable variables.
+AppContext is a library for the [Go Programming Language][go]. It provides
+some implementation of types that stores values shared to local application.
 
-Additionally it provides another application context store based on the first
-one to manages session tokens.
+The TimedStore type offers expirable values and TokenStore provides management
+of session tokens.
 
 ## Status
 
-[![Build Status](https://secure.travis-ci.org/skarllot/contextstore.png)](http://travis-ci.org/skarllot/contextstore) [![Coverage](http://gocover.io/_badge/github.com/skarllot/contextstore)](http://gocover.io/github.com/skarllot/contextstore) [![GoDoc](https://godoc.org/github.com/skarllot/contextstore?status.svg)](http://godoc.org/github.com/skarllot/contextstore)
+[![Build Status](https://secure.travis-ci.org/skarllot/appcontext.png)](http://travis-ci.org/skarllot/appcontext) [![Coverage](http://gocover.io/_badge/github.com/skarllot/appcontext)](http://gocover.io/github.com/skarllot/appcontext) [![GoDoc](https://godoc.org/github.com/skarllot/appcontext?status.svg)](http://godoc.org/github.com/skarllot/appcontext)
 
 ## Installation
 
-To install ContextStore library run the following command:
+To install AppContext library run the following command:
 
 ~~~ bash
-go get github.com/skarllot/contextstore
+go get github.com/skarllot/appcontext
 ~~~
 
 
