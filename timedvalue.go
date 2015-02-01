@@ -13,18 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package contextstore
+
+package appcontext
 
 import (
 	"time"
 )
 
-type TimedItem struct {
+// A TimedValue represents a value that expires after defined time.
+type TimedValue struct {
 	expireAt time.Time
 	duration time.Duration
 	value    interface{}
 }
 
-func (i *TimedItem) IsExpired() bool {
+// IsExpired returns whether current value is expired.
+func (i *TimedValue) IsExpired() bool {
 	return time.Now().After(i.expireAt)
+}
+
+// UpdateExpiration postpone value expiration time to current time added to its
+// lifetime duration.
+func (i *TimedValue) UpdateExpiration() {
+	i.expireAt = time.Now().Add(i.duration)
 }

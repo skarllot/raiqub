@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package contextstore
+
+package appcontext
 
 import (
 	"errors"
@@ -22,36 +23,22 @@ import (
 	"time"
 )
 
+// A TimedStore provides values that expires after defined duration of time.
 type TimedStore struct {
-	items    map[string]*TimedItem
+	values   map[string]*TimedValue
 	duration time.Duration
 	mutex    *sync.Mutex
 }
 
-func (s *TimedStore) New(d time.Duration) *TimedStore {
+func NewTimedStore(d time.Duration) *TimedStore {
 	return &TimedStore{
-		items:    make(map[string]*TimedItem),
+		values:   make(map[string]*TimedValue),
 		duration: d,
 		mutex:    &sync.Mutex{},
 	}
 }
 
-func (s *TimedStore) NewItem(id string, value interface{}) *TimedItem {
-	s.removeExpired()
-	i := &TimedItem{
-		expireAt: time.Now().Add(s.duration),
-		duration: 0,
-		value:    value,
-	}
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	s.items[id] = i
-
-	return i
-}
-
-func (s *TimedStore) GetItem(id string) (interface{}, error) {
+func (s *TimedStore) GetValue(id string) (interface{}, error) {
 	s.removeExpired()
 
 	s.mutex.Lock()
@@ -61,30 +48,37 @@ func (s *TimedStore) GetItem(id string) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.refreshItem(v)
+	v.UpdateExpiration()
 	return v.value, nil
 }
 
-func (s *TimedStore) refreshItem(i *TimedItem) {
-	d := s.duration
-	if i.duration != 0 {
-		d = i.duration
+func (s *TimedStore) NewValue(id string, value interface{}) *TimedValue {
+	s.removeExpired()
+	i := &TimedValue{
+		expireAt: time.Now().Add(s.duration),
+		duration: s.duration,
+		value:    value,
 	}
-	i.expireAt = time.Now().Add(d)
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.values[id] = i
+
+	return i
 }
 
 func (s *TimedStore) removeExpired() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	for i := range s.items {
-		if s.items[i].IsExpired() {
-			delete(s.items, i)
+	for i := range s.values {
+		if s.values[i].IsExpired() {
+			delete(s.values, i)
 		}
 	}
 }
 
-func (s *TimedStore) RemoveItem(id string) error {
+func (s *TimedStore) RemoveValue(id string) error {
 	s.removeExpired()
 
 	s.mutex.Lock()
@@ -95,11 +89,11 @@ func (s *TimedStore) RemoveItem(id string) error {
 		return err
 	}
 
-	delete(s.items, id)
+	delete(s.values, id)
 	return nil
 }
 
-func (s *TimedStore) SetItem(id string, value interface{}) error {
+func (s *TimedStore) SetValue(id string, value interface{}) error {
 	s.removeExpired()
 
 	s.mutex.Lock()
@@ -110,12 +104,13 @@ func (s *TimedStore) SetItem(id string, value interface{}) error {
 		return err
 	}
 
-	s.refreshItem(v)
+	v.UpdateExpiration()
 	v.value = value
 	return nil
 }
 
-func (s *TimedStore) SetItemDuration(id string, d time.Duration) error {
+// SetValueDuration modifies the lifetime of selected value.
+func (s *TimedStore) SetValueDuration(id string, d time.Duration) error {
 	s.removeExpired()
 
 	s.mutex.Lock()
@@ -126,13 +121,13 @@ func (s *TimedStore) SetItemDuration(id string, d time.Duration) error {
 		return err
 	}
 
-	v.expireAt = time.Now().Add(d)
 	v.duration = d
+	v.UpdateExpiration()
 	return nil
 }
 
-func (s *TimedStore) unsafeGet(id string) (*TimedItem, error) {
-	v, ok := s.items[id]
+func (s *TimedStore) unsafeGet(id string) (*TimedValue, error) {
+	v, ok := s.values[id]
 	if !ok {
 		return nil, errors.New(
 			fmt.Sprintf("The requested id '%s' does not exist or is expired", id))

@@ -15,7 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-package contextstore
+
+package appcontext
 
 import (
 	"crypto/rand"
@@ -28,13 +29,13 @@ import (
 )
 
 type TokenStore struct {
-	*TimedStore
+	tstore       *TimedStore
 	salt         string
 	authDuration time.Duration
 }
 
 func (s *TokenStore) Count() int {
-	return len(s.items)
+	return len(s.tstore.values)
 }
 
 func (s *TokenStore) getInvalidTokenError(token string) error {
@@ -43,19 +44,19 @@ func (s *TokenStore) getInvalidTokenError(token string) error {
 }
 
 func (s *TokenStore) GetValue(token string) (interface{}, error) {
-	v, err := s.GetItem(token)
+	v, err := s.tstore.GetValue(token)
 	if err != nil {
 		return nil, s.getInvalidTokenError(token)
 	}
 	return v, err
 }
 
-func (s *TokenStore) New(noAuth, auth time.Duration, salt string) *TokenStore {
-	ts := (&TimedStore{}).New(noAuth)
+func NewTokenStore(noAuth, auth time.Duration, salt string) *TokenStore {
+	ts := NewTimedStore(noAuth)
 	return &TokenStore{
-		ts,
-		salt,
-		auth,
+		tstore:       ts,
+		salt:         salt,
+		authDuration: auth,
 	}
 }
 
@@ -63,19 +64,22 @@ func (s *TokenStore) NewToken() string {
 	hash := sha256.New()
 	now := time.Now().Format(time.ANSIC)
 
+	// Tries to create unpredictable token
+	// Most strength comes from 'rand.Read'
+	// Another bits are used to avoid the chance of system random genarator
+	//   is compromissed by internal issue
 	hash.Write([]byte(now))
 	hash.Write([]byte(strconv.Itoa(time.Now().Nanosecond())))
 	hash.Write([]byte(s.salt))
-	hash.Write(getRandomBytes(32 + time.Now().Second()))
+	hash.Write(getRandomBytes(64 + time.Now().Second()))
 	strSum := base64.URLEncoding.EncodeToString(hash.Sum(nil))
 
-	s.NewItem(strSum, nil)
-
+	s.tstore.NewValue(strSum, nil)
 	return strSum
 }
 
 func (s *TokenStore) RemoveToken(token string) error {
-	err := s.RemoveItem(token)
+	err := s.tstore.RemoveValue(token)
 	if err != nil {
 		return s.getInvalidTokenError(token)
 	}
@@ -83,7 +87,7 @@ func (s *TokenStore) RemoveToken(token string) error {
 }
 
 func (s *TokenStore) SetTokenAsAuthenticated(token string) error {
-	err := s.SetItemDuration(token, s.authDuration)
+	err := s.tstore.SetValueDuration(token, s.authDuration)
 	if err != nil {
 		return s.getInvalidTokenError(token)
 	}
@@ -91,7 +95,7 @@ func (s *TokenStore) SetTokenAsAuthenticated(token string) error {
 }
 
 func (s *TokenStore) SetValue(token string, value interface{}) error {
-	err := s.SetItem(token, value)
+	err := s.tstore.SetValue(token, value)
 	if err != nil {
 		return s.getInvalidTokenError(token)
 	}
