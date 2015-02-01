@@ -62,7 +62,7 @@ func NewTokenStore(noAuth, auth time.Duration, salt string) *TokenStore {
 
 func (s *TokenStore) NewToken() string {
 	hash := sha256.New()
-	now := time.Now().Format(time.ANSIC)
+	now := time.Now().Format(time.RFC3339Nano)
 
 	// Tries to create unpredictable token
 	// Most strength comes from 'rand.Read'

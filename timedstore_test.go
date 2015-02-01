@@ -68,6 +68,10 @@ func TestValueSetExpiration(t *testing.T) {
 	if _, err := ts.GetValue("v1"); err != nil {
 		t.Error("The value v1 is expired before expected")
 	}
+
+	if err := ts.SetValueDuration("v2", time.Second); err == nil {
+		t.Error("Should not be possible to set duration for invalid value")
+	}
 }
 
 func BenchmarkValueCreation(b *testing.B) {
@@ -75,6 +79,6 @@ func BenchmarkValueCreation(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		ts.NewValue(time.Now().Format(time.ANSIC), time.Now())
+		ts.NewValue(time.Now().Format(time.RFC3339Nano), time.Now())
 	}
 }
