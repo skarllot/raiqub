@@ -34,8 +34,17 @@ type TokenStore struct {
 	authDuration time.Duration
 }
 
+func NewTokenStore(noAuth, auth time.Duration, salt string) *TokenStore {
+	ts := NewTimedStore(noAuth)
+	return &TokenStore{
+		tstore:       ts,
+		salt:         salt,
+		authDuration: auth,
+	}
+}
+
 func (s *TokenStore) Count() int {
-	return len(s.tstore.values)
+	return s.Count()
 }
 
 func (s *TokenStore) getInvalidTokenError(token string) error {
@@ -49,15 +58,6 @@ func (s *TokenStore) GetValue(token string) (interface{}, error) {
 		return nil, s.getInvalidTokenError(token)
 	}
 	return v, err
-}
-
-func NewTokenStore(noAuth, auth time.Duration, salt string) *TokenStore {
-	ts := NewTimedStore(noAuth)
-	return &TokenStore{
-		tstore:       ts,
-		salt:         salt,
-		authDuration: auth,
-	}
 }
 
 func (s *TokenStore) NewToken() string {
@@ -74,7 +74,7 @@ func (s *TokenStore) NewToken() string {
 	hash.Write(getRandomBytes(64 + time.Now().Second()))
 	strSum := base64.URLEncoding.EncodeToString(hash.Sum(nil))
 
-	s.tstore.NewValue(strSum, nil)
+	s.tstore.AddValue(strSum, nil)
 	return strSum
 }
 

@@ -26,8 +26,8 @@ import (
 func TestValueExpiration(t *testing.T) {
 	ts := NewTimedStore(time.Millisecond * 10)
 
-	ts.NewValue("v1", nil)
-	ts.NewValue("v2", nil)
+	ts.AddValue("v1", nil)
+	ts.AddValue("v2", nil)
 
 	if _, err := ts.GetValue("v1"); err != nil {
 		t.Error("The value v1 was not stored")
@@ -49,10 +49,10 @@ func TestValueExpiration(t *testing.T) {
 func TestValueIdCollision(t *testing.T) {
 	ts := NewTimedStore(time.Millisecond)
 
-	if _, err := ts.NewValue("v1", nil); err != nil {
+	if _, err := ts.AddValue("v1", nil); err != nil {
 		t.Error("The value v1 could not be stored")
 	}
-	if _, err := ts.NewValue("v1", nil); err == nil {
+	if _, err := ts.AddValue("v1", nil); err == nil {
 		t.Error("The duplicated v1 could be stored")
 	}
 }
@@ -60,7 +60,7 @@ func TestValueIdCollision(t *testing.T) {
 func TestValueSetExpiration(t *testing.T) {
 	ts := NewTimedStore(time.Millisecond)
 
-	ts.NewValue("v1", nil)
+	ts.AddValue("v1", nil)
 	ts.SetValueDuration("v1", time.Second)
 
 	time.Sleep(time.Millisecond * 10)
@@ -79,6 +79,6 @@ func BenchmarkValueCreation(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		ts.NewValue(time.Now().Format(time.RFC3339Nano), time.Now())
+		ts.AddValue(time.Now().Format(time.RFC3339Nano), time.Now())
 	}
 }

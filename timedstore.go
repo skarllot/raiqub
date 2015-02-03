@@ -30,6 +30,7 @@ type TimedStore struct {
 	mutex    *sync.Mutex
 }
 
+// NewTimedStore creates a new instance of TimedStore.
 func NewTimedStore(d time.Duration) *TimedStore {
 	return &TimedStore{
 		values:   make(map[string]*TimedValue),
@@ -38,21 +39,8 @@ func NewTimedStore(d time.Duration) *TimedStore {
 	}
 }
 
-func (s *TimedStore) GetValue(id string) (interface{}, error) {
-	s.removeExpired()
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	v, err := s.unsafeGet(id)
-	if err != nil {
-		return nil, err
-	}
-	v.UpdateExpiration()
-	return v.value, nil
-}
-
-func (s *TimedStore) NewValue(id string, value interface{}) (*TimedValue, error) {
+// AddValue adds a new value to current TimedStore instance.
+func (s *TimedStore) AddValue(id string, value interface{}) (*TimedValue, error) {
 	s.removeExpired()
 
 	s.mutex.Lock()
@@ -72,6 +60,32 @@ func (s *TimedStore) NewValue(id string, value interface{}) (*TimedValue, error)
 	return i, nil
 }
 
+// Count gets the number of stored values by current instance.
+func (s *TimedStore) Count() int {
+	s.removeExpired()
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return len(s.values)
+}
+
+// GetValue gets the value stored by specified ID.
+func (s *TimedStore) GetValue(id string) (interface{}, error) {
+	s.removeExpired()
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	v, err := s.unsafeGet(id)
+	if err != nil {
+		return nil, err
+	}
+	v.UpdateExpiration()
+	return v.value, nil
+}
+
+// removeExpired remove all expired values from current TimedStore instance
+// list.
 func (s *TimedStore) removeExpired() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -83,6 +97,7 @@ func (s *TimedStore) removeExpired() {
 	}
 }
 
+// RemoveValue removes the value of specified ID.
 func (s *TimedStore) RemoveValue(id string) error {
 	s.removeExpired()
 
@@ -98,6 +113,7 @@ func (s *TimedStore) RemoveValue(id string) error {
 	return nil
 }
 
+// SetValue sets the value of specified ID.
 func (s *TimedStore) SetValue(id string, value interface{}) error {
 	s.removeExpired()
 
@@ -114,7 +130,7 @@ func (s *TimedStore) SetValue(id string, value interface{}) error {
 	return nil
 }
 
-// SetValueDuration modifies the lifetime of selected value.
+// SetValueDuration modifies the lifetime of specified value.
 func (s *TimedStore) SetValueDuration(id string, d time.Duration) error {
 	s.removeExpired()
 
@@ -131,6 +147,7 @@ func (s *TimedStore) SetValueDuration(id string, d time.Duration) error {
 	return nil
 }
 
+// unsafeGet gets one TimedValue instance from its ID without locking.
 func (s *TimedStore) unsafeGet(id string) (*TimedValue, error) {
 	v, ok := s.values[id]
 	if !ok {
