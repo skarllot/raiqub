@@ -82,6 +82,7 @@ func (s *TokenStore) NewToken() string {
 	hash.Write([]byte(s.salt))
 	hash.Write(getRandomBytes(64 + time.Now().Second()))
 	strSum := base64.URLEncoding.EncodeToString(hash.Sum(nil))
+	s.salt = strSum
 
 	s.tstore.AddValue(strSum, nil)
 	return strSum
