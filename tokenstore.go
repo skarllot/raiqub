@@ -28,12 +28,15 @@ import (
 	"time"
 )
 
+// A TokenStore provides a temporary token to uniquely identify an user session.
 type TokenStore struct {
 	tstore       *TimedStore
 	salt         string
 	authDuration time.Duration
 }
 
+// NewTokenStore creates a new instance of TokenStore and defines a lifetime for
+// unauthenticated and authenticated sessions and a salt for random input.
 func NewTokenStore(noAuth, auth time.Duration, salt string) *TokenStore {
 	ts := NewTimedStore(noAuth)
 	return &TokenStore{
@@ -43,15 +46,19 @@ func NewTokenStore(noAuth, auth time.Duration, salt string) *TokenStore {
 	}
 }
 
+// Count gets the number of tokens stored by current instance.
 func (s *TokenStore) Count() int {
 	return s.Count()
 }
 
+// getInvalidTokenError gets the default error when an invalid or expired token
+// is requested.
 func (s *TokenStore) getInvalidTokenError(token string) error {
 	return errors.New(fmt.Sprintf(
 		"The requested token '%s' is invalid or is expired", token))
 }
 
+// GetValue gets the value stored by specified token.
 func (s *TokenStore) GetValue(token string) (interface{}, error) {
 	v, err := s.tstore.GetValue(token)
 	if err != nil {
@@ -60,6 +67,8 @@ func (s *TokenStore) GetValue(token string) (interface{}, error) {
 	return v, err
 }
 
+// NewToken creates a new unique token and stores it into current TokenStore
+// instance.
 func (s *TokenStore) NewToken() string {
 	hash := sha256.New()
 	now := time.Now().Format(time.RFC3339Nano)
@@ -78,6 +87,7 @@ func (s *TokenStore) NewToken() string {
 	return strSum
 }
 
+// RemoveToken removes specified token from current TokenStore instance.
 func (s *TokenStore) RemoveToken(token string) error {
 	err := s.tstore.RemoveValue(token)
 	if err != nil {
@@ -86,6 +96,8 @@ func (s *TokenStore) RemoveToken(token string) error {
 	return nil
 }
 
+// SetTokenAsAuthenticated updates the lifetime of specified token to specified
+// lifetime for authenticated sessions.
 func (s *TokenStore) SetTokenAsAuthenticated(token string) error {
 	err := s.tstore.SetValueDuration(token, s.authDuration)
 	if err != nil {
@@ -94,6 +106,7 @@ func (s *TokenStore) SetTokenAsAuthenticated(token string) error {
 	return nil
 }
 
+// SetValue store a value to specified token.
 func (s *TokenStore) SetValue(token string, value interface{}) error {
 	err := s.tstore.SetValue(token, value)
 	if err != nil {
@@ -102,6 +115,7 @@ func (s *TokenStore) SetValue(token string, value interface{}) error {
 	return nil
 }
 
+// getRandomBytes gets secure random bytes.
 func getRandomBytes(n int) []byte {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
@@ -112,6 +126,7 @@ func getRandomBytes(n int) []byte {
 	return b
 }
 
+// getRandomString gets secure random characters.
 func getRandomString(n int) string {
 	b := getRandomBytes(n)
 	return base64.URLEncoding.EncodeToString(b)
