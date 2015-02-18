@@ -19,36 +19,39 @@
 package appcontext
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 )
 
 // A TokenStore provides a temporary token to uniquely identify an user session.
 type TokenStore struct {
 	tstore       *TimedStore
-	salt         string
+	salt         []byte
 	authDuration time.Duration
 }
 
 // NewTokenStore creates a new instance of TokenStore and defines a lifetime for
 // unauthenticated and authenticated sessions and a salt for random input.
 func NewTokenStore(noAuth, auth time.Duration, salt string) *TokenStore {
+	hash := sha256.New()
+	hash.Write([]byte(salt))
+
 	ts := NewTimedStore(noAuth)
 	return &TokenStore{
 		tstore:       ts,
-		salt:         salt,
+		salt:         hash.Sum(nil),
 		authDuration: auth,
 	}
 }
 
 // Count gets the number of tokens stored by current instance.
 func (s *TokenStore) Count() int {
-	return s.Count()
+	return s.tstore.Count()
 }
 
 // getInvalidTokenError gets the default error when an invalid or expired token
@@ -70,21 +73,25 @@ func (s *TokenStore) GetValue(token string) (interface{}, error) {
 // NewToken creates a new unique token and stores it into current TokenStore
 // instance.
 func (s *TokenStore) NewToken() string {
-	hash := sha256.New()
+	mac := hmac.New(sha256.New, s.salt)
 	now := time.Now().Format(time.RFC3339Nano)
 
 	// Tries to create unpredictable token
 	// Most strength comes from 'rand.Read'
 	// Another bits are used to avoid the chance of system random genarator
 	//   is compromissed by internal issue
-	hash.Write([]byte(now))
-	hash.Write([]byte(strconv.Itoa(time.Now().Nanosecond())))
-	hash.Write([]byte(s.salt))
-	hash.Write(getRandomBytes(64 + time.Now().Second()))
-	strSum := base64.URLEncoding.EncodeToString(hash.Sum(nil))
-	s.salt = strSum
+	mac.Write(getRandomBytes(128))
+	mac.Write(getRandomBytes(time.Now().Second() / 2))
+	mac.Write([]byte(now))
+	macSum := mac.Sum(nil)
+	s.salt = macSum
+	strSum := base64.URLEncoding.EncodeToString(macSum)
 
-	s.tstore.AddValue(strSum, nil)
+	_, err := s.tstore.AddValue(strSum, nil)
+	if err != nil {
+		panic("Something is seriously wrong, a duplicated token was generated")
+	}
+
 	return strSum
 }
 
@@ -125,10 +132,4 @@ func getRandomBytes(n int) []byte {
 	}
 
 	return b
-}
-
-// getRandomString gets secure random characters.
-func getRandomString(n int) string {
-	b := getRandomBytes(n)
-	return base64.URLEncoding.EncodeToString(b)
 }

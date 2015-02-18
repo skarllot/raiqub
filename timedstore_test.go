@@ -44,6 +44,82 @@ func TestValueExpiration(t *testing.T) {
 	if _, err := ts.GetValue("v2"); err == nil {
 		t.Error("The value v2 was not expired")
 	}
+
+	if err := ts.RemoveValue("v1"); err == nil {
+		t.Error("The expired value v1 should not be removable")
+	}
+	if err := ts.SetValue("v2", nil); err == nil {
+		t.Error("The expired value v2 should not be changeable")
+	}
+}
+
+func TestValueHandling(t *testing.T) {
+	testValues := map[string]int{
+		"v1":  3,
+		"v2":  6,
+		"v3":  83679,
+		"v4":  2748,
+		"v5":  54,
+		"v6":  6,
+		"v7":  2,
+		"v8":  8,
+		"v9":  7,
+		"v10": 8,
+	}
+	rmTestKey := "v5"
+	changeValues := map[string]int{
+		"v4": 5062,
+		"v9": 4099,
+	}
+
+	ts := NewTimedStore(time.Millisecond * 10)
+
+	for k, v := range testValues {
+		_, err := ts.AddValue(k, v)
+		if err != nil {
+			t.Errorf("The value %s could not be added", k)
+		}
+	}
+
+	if ts.Count() != len(testValues) {
+		t.Error("The values count do not match")
+	}
+
+	for k, v := range testValues {
+		v2, err := ts.GetValue(k)
+		if err != nil {
+			t.Errorf("The value %s could not be read", k)
+		}
+		if v2 != v {
+			t.Errorf("The value %s was stored incorrectly", k)
+		}
+	}
+
+	if err := ts.RemoveValue(rmTestKey); err != nil {
+		t.Errorf("The value %s could not be removed", rmTestKey)
+	}
+	if _, err := ts.GetValue(rmTestKey); err == nil {
+		t.Errorf("The removed value %s should not be retrieved", rmTestKey)
+	}
+	if ts.Count() == len(testValues) {
+		t.Error("The values count should not match")
+	}
+
+	for k, v := range changeValues {
+		err := ts.SetValue(k, v)
+		if err != nil {
+			t.Errorf("The value %s could not be changed", k)
+		}
+	}
+	for k, v := range changeValues {
+		v2, err := ts.GetValue(k)
+		if err != nil {
+			t.Errorf("The value %s could not be read", k)
+		}
+		if v2 != v {
+			t.Errorf("The value %s was not changed", k)
+		}
+	}
 }
 
 func TestValueIdCollision(t *testing.T) {
