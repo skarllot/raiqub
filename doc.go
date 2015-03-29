@@ -20,19 +20,19 @@ Package raiqub provides some common tasks for Web Services implementations.
 Creating an application context its the recommended way to avoid global
 variables and strict the access to your variables to selected functions.
 
-TimedStore
+Cache
 
-A TimedStore provides values that expires after defined duration of time. That
-duration is defined when a new instance is initialized calling
-'contextstore.NewTimedStore()' function and it is used to all stored values.
+A Cache provides in-memory key:value cache that expires after defined duration
+of time. That duration is defined when a new instance is initialized calling
+'raiqub.NewCache()' function and it is used to all cached values.
 
-The lifetime of a value can be modified calling 'SetItemDuration()'. The
+The lifetime of a value can be modified calling 'SetLifetime()'. The
 expiration time of a value is automatically updated when its value is retrieved
-by the following methods: 'GetItem()', 'SetItem()' and 'SetItemDuration()'.
+by the following methods: 'Get()', 'Set()' and 'SetLifetime()'.
 
-TokenStore
+TokenCache
 
-A TokenStore provides session tokens to uniquely identify an user session. Each
+A TokenCache provides session tokens to uniquely identify an user session. Each
 token expires automatically if it is not used after defined time. The tokens for
 authenticated sessions may have a distinct expiration time.
 */
