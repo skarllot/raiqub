@@ -15,8 +15,7 @@
  */
 
 /*
-Package appcontext provides some implementations of types that stores values
-shared to local application.
+Package raiqub provides some common tasks for Web Services implementations.
 
 Creating an application context its the recommended way to avoid global
 variables and strict the access to your variables to selected functions.
@@ -37,4 +36,4 @@ A TokenStore provides session tokens to uniquely identify an user session. Each
 token expires automatically if it is not used after defined time. The tokens for
 authenticated sessions may have a distinct expiration time.
 */
-package appcontext
+package raiqub
