@@ -20,20 +20,20 @@ import (
 	"time"
 )
 
-// A TimedValue represents a value that expires after defined time.
-type TimedValue struct {
+// A cacheItem represents a cached value that expires after defined time.
+type cacheItem struct {
 	expireAt time.Time
-	duration time.Duration
+	lifetime time.Duration
 	value    interface{}
 }
 
 // IsExpired returns whether current value is expired.
-func (i *TimedValue) IsExpired() bool {
+func (i *cacheItem) IsExpired() bool {
 	return time.Now().After(i.expireAt)
 }
 
-// UpdateExpiration postpone value expiration time to current time added to its
-// lifetime duration.
-func (i *TimedValue) UpdateExpiration() {
-	i.expireAt = time.Now().Add(i.duration)
+// Postpone value expiration time to current time added to its lifetime
+// duration.
+func (i *cacheItem) Postpone() {
+	i.expireAt = time.Now().Add(i.lifetime)
 }

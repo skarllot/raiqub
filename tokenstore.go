@@ -19,75 +19,56 @@
 package raiqub
 
 import (
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
 )
 
-// A TokenStore provides a temporary token to uniquely identify an user session.
-type TokenStore struct {
-	tstore       *TimedStore
-	salt         []byte
+// A TokenCache provides a temporary token to uniquely identify an user session.
+type TokenCache struct {
+	cache        *Cache
+	salter       *Salter
 	authDuration time.Duration
 }
 
-// NewTokenStore creates a new instance of TokenStore and defines a lifetime for
-// unauthenticated and authenticated sessions and a salt for random input.
-func NewTokenStore(noAuth, auth time.Duration, salt string) *TokenStore {
-	hash := sha256.New()
-	hash.Write([]byte(salt))
-
-	ts := NewTimedStore(noAuth)
-	return &TokenStore{
-		tstore:       ts,
-		salt:         hash.Sum(nil),
+// NewTokenCache creates a new instance of TokenCache and defines a lifetime for
+// unauthenticated and authenticated sessions and a initial salt for random
+// input.
+func NewTokenCache(noAuth, auth time.Duration, salt string) *TokenCache {
+	return &TokenCache{
+		cache:        NewCache(noAuth),
+		salter:       NewSalter(),
 		authDuration: auth,
 	}
 }
 
 // Count gets the number of tokens stored by current instance.
-func (s *TokenStore) Count() int {
-	return s.tstore.Count()
+func (s *TokenCache) Count() int {
+	return s.cache.Count()
 }
 
 // getInvalidTokenError gets the default error when an invalid or expired token
 // is requested.
-func (s *TokenStore) getInvalidTokenError(token string) error {
+func (s *TokenCache) getInvalidTokenError(token string) error {
 	return errors.New(fmt.Sprintf(
 		"The requested token '%s' is invalid or is expired", token))
 }
 
-// GetValue gets the value stored by specified token.
-func (s *TokenStore) GetValue(token string) (interface{}, error) {
-	v, err := s.tstore.GetValue(token)
+// Get gets the value stored by specified token.
+func (s *TokenCache) Get(token string) (interface{}, error) {
+	v, err := s.cache.Get(token)
 	if err != nil {
 		return nil, s.getInvalidTokenError(token)
 	}
 	return v, err
 }
 
-// NewToken creates a new unique token and stores it into current TokenStore
+// Add creates a new unique token and stores it into current TokenCache
 // instance.
-func (s *TokenStore) NewToken() string {
-	mac := hmac.New(sha256.New, s.salt)
-	now := time.Now().Format(time.RFC3339Nano)
+func (s *TokenCache) Add() string {
+	strSum := s.salter.DefaultToken()
 
-	// Tries to create unpredictable token
-	// Most strength comes from 'rand.Read'
-	// Another bits are used to avoid the chance of system random genarator
-	//   is compromissed by internal issue
-	mac.Write(getRandomBytes(128))
-	mac.Write(getRandomBytes(time.Now().Second() / 2))
-	mac.Write([]byte(now))
-	macSum := mac.Sum(nil)
-	s.salt = macSum
-	strSum := base64.URLEncoding.EncodeToString(macSum)
-
-	_, err := s.tstore.AddValue(strSum, nil)
+	err := s.cache.Add(strSum, nil)
 	if err != nil {
 		panic("Something is seriously wrong, a duplicated token was generated")
 	}
@@ -95,41 +76,30 @@ func (s *TokenStore) NewToken() string {
 	return strSum
 }
 
-// RemoveToken removes specified token from current TokenStore instance.
-func (s *TokenStore) RemoveToken(token string) error {
-	err := s.tstore.RemoveValue(token)
+// Delete deletes specified token from current TokenCache instance.
+func (s *TokenCache) Delete(token string) error {
+	err := s.cache.Delete(token)
 	if err != nil {
 		return s.getInvalidTokenError(token)
 	}
 	return nil
 }
 
-// SetTokenAsAuthenticated updates the lifetime of specified token to specified
+// SetAsAuthenticated updates the lifetime of specified token to specified
 // lifetime for authenticated sessions.
-func (s *TokenStore) SetTokenAsAuthenticated(token string) error {
-	err := s.tstore.SetValueDuration(token, s.authDuration)
+func (s *TokenCache) SetAsAuthenticated(token string) error {
+	err := s.cache.SetLifetime(token, s.authDuration)
 	if err != nil {
 		return s.getInvalidTokenError(token)
 	}
 	return nil
 }
 
-// SetValue store a value to specified token.
-func (s *TokenStore) SetValue(token string, value interface{}) error {
-	err := s.tstore.SetValue(token, value)
+// Set store a value to specified token.
+func (s *TokenCache) Set(token string, value interface{}) error {
+	err := s.cache.Set(token, value)
 	if err != nil {
 		return s.getInvalidTokenError(token)
 	}
 	return nil
-}
-
-// getRandomBytes gets secure random bytes.
-func getRandomBytes(n int) []byte {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	if err != nil {
-		panic("Could not access secure random generator")
-	}
-
-	return b
 }

@@ -26,48 +26,48 @@ import (
 const TOKEN_SALT = "CvoTVwDw685Ve0qjGn//zmHGKvoCcslYNQT4AQ9FygSk9t6NuzBHuohyOHhqb/1omn6c"
 
 func TestTokenAuthentication(t *testing.T) {
-	ts := NewTokenStore(time.Millisecond*10, time.Second, TOKEN_SALT)
+	ts := NewTokenCache(time.Millisecond*10, time.Second, TOKEN_SALT)
 
-	t1 := ts.NewToken()
-	if err := ts.SetTokenAsAuthenticated(t1); err != nil {
+	t1 := ts.Add()
+	if err := ts.SetAsAuthenticated(t1); err != nil {
 		t.Error("The token t1 could not authenticate")
 	}
 
 	time.Sleep(time.Millisecond * 20)
 
-	if _, err := ts.GetValue(t1); err != nil {
+	if _, err := ts.Get(t1); err != nil {
 		t.Error("The token t1 expired sooner than expected")
 	}
 }
 func TestTokenExpiration(t *testing.T) {
-	ts := NewTokenStore(time.Millisecond*10, time.Millisecond*30, TOKEN_SALT)
+	ts := NewTokenCache(time.Millisecond*10, time.Millisecond*30, TOKEN_SALT)
 
-	t1 := ts.NewToken()
-	t2 := ts.NewToken()
+	t1 := ts.Add()
+	t2 := ts.Add()
 
-	if _, err := ts.GetValue(t1); err != nil {
+	if _, err := ts.Get(t1); err != nil {
 		t.Error("The token t1 was not stored")
 	}
-	if _, err := ts.GetValue(t2); err != nil {
+	if _, err := ts.Get(t2); err != nil {
 		t.Error("The token t2 was not stored")
 	}
 
 	time.Sleep(time.Millisecond * 20)
 
-	if _, err := ts.GetValue(t1); err == nil {
+	if _, err := ts.Get(t1); err == nil {
 		t.Error("The token t1 was not expired")
 	}
-	if _, err := ts.GetValue(t2); err == nil {
+	if _, err := ts.Get(t2); err == nil {
 		t.Error("The token t2 was not expired")
 	}
 
-	if err := ts.RemoveToken(t1); err == nil {
+	if err := ts.Delete(t1); err == nil {
 		t.Error("The expired token t1 should not be removable")
 	}
-	if err := ts.SetValue(t2, nil); err == nil {
+	if err := ts.Set(t2, nil); err == nil {
 		t.Error("The expired token t2 should not be changeable")
 	}
-	if err := ts.SetTokenAsAuthenticated(t1); err == nil {
+	if err := ts.SetAsAuthenticated(t1); err == nil {
 		t.Error("The expired token t1 should not be authenticable")
 	}
 }
@@ -95,12 +95,12 @@ func TestTokenHandling(t *testing.T) {
 		9: 4099,
 	}
 
-	ts := NewTokenStore(time.Millisecond*10, time.Millisecond*30, TOKEN_SALT)
+	ts := NewTokenCache(time.Millisecond*10, time.Millisecond*30, TOKEN_SALT)
 
 	for i, _ := range testValues {
 		item := &testValues[i]
-		item.token = ts.NewToken()
-		err := ts.SetValue(item.token, item.value)
+		item.token = ts.Add()
+		err := ts.Set(item.token, item.value)
 		if err != nil {
 			t.Errorf("The token %s could not be set", item.ref)
 		}
@@ -111,7 +111,7 @@ func TestTokenHandling(t *testing.T) {
 	}
 
 	for _, i := range testValues {
-		v, err := ts.GetValue(i.token)
+		v, err := ts.Get(i.token)
 		if err != nil {
 			t.Errorf("The token %s could not be read", i.ref)
 		}
@@ -121,10 +121,10 @@ func TestTokenHandling(t *testing.T) {
 	}
 
 	rmTestKey := testValues[rmTestIndex]
-	if err := ts.RemoveToken(rmTestKey.token); err != nil {
+	if err := ts.Delete(rmTestKey.token); err != nil {
 		t.Errorf("The token %s could not be removed", rmTestKey.ref)
 	}
-	if _, err := ts.GetValue(rmTestKey.token); err == nil {
+	if _, err := ts.Get(rmTestKey.token); err == nil {
 		t.Errorf("The removed token %s should not be retrieved", rmTestKey.ref)
 	}
 	if ts.Count() == len(testValues) {
@@ -133,14 +133,14 @@ func TestTokenHandling(t *testing.T) {
 
 	for k, v := range changeValues {
 		item := testValues[k]
-		err := ts.SetValue(item.token, v)
+		err := ts.Set(item.token, v)
 		if err != nil {
 			t.Errorf("The token %s could not be changed", item.ref)
 		}
 	}
 	for k, v := range changeValues {
 		item := testValues[k]
-		v2, err := ts.GetValue(item.token)
+		v2, err := ts.Get(item.token)
 		if err != nil {
 			t.Errorf("The token %s could not be read", item.ref)
 		}
@@ -151,10 +151,10 @@ func TestTokenHandling(t *testing.T) {
 }
 
 func BenchmarkTokenCreation(b *testing.B) {
-	ts := NewTokenStore(time.Millisecond, time.Second, TOKEN_SALT)
+	ts := NewTokenCache(time.Millisecond, time.Second, TOKEN_SALT)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		ts.NewToken()
+		ts.Add()
 	}
 }

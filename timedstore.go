@@ -23,73 +23,72 @@ import (
 	"time"
 )
 
-// A TimedStore provides values that expires after defined duration of time.
-type TimedStore struct {
-	values   map[string]*TimedValue
-	duration time.Duration
+// A Cache provides in-memory key:value cache that expires after defined
+// duration of time.
+type Cache struct {
+	values   map[string]*cacheItem
+	lifetime time.Duration
 	mutex    *sync.Mutex
 }
 
-// NewTimedStore creates a new instance of TimedStore.
-func NewTimedStore(d time.Duration) *TimedStore {
-	return &TimedStore{
-		values:   make(map[string]*TimedValue),
-		duration: d,
+// NewCache creates a new instance of Cache.
+func NewCache(d time.Duration) *Cache {
+	return &Cache{
+		values:   make(map[string]*cacheItem),
+		lifetime: d,
 		mutex:    &sync.Mutex{},
 	}
 }
 
-// AddValue adds a new value to current TimedStore instance.
-func (s *TimedStore) AddValue(id string, value interface{}) (*TimedValue, error) {
-	s.removeExpired()
-
+// Add adds a new key:value to current Cache instance.
+func (s *Cache) Add(key string, value interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	if _, ok := s.values[id]; ok {
-		return nil, errors.New(
+
+	s.removeExpired()
+
+	if _, ok := s.values[key]; ok {
+		return errors.New(
 			"Could not allocate the new value because of duplicated id")
 	}
 
-	i := &TimedValue{
-		expireAt: time.Now().Add(s.duration),
-		duration: s.duration,
+	i := &cacheItem{
+		expireAt: time.Now().Add(s.lifetime),
+		lifetime: s.lifetime,
 		value:    value,
 	}
 
-	s.values[id] = i
-	return i, nil
+	s.values[key] = i
+	return nil
 }
 
-// Count gets the number of stored values by current instance.
-func (s *TimedStore) Count() int {
-	s.removeExpired()
-
+// Count gets the number of cached values by current instance.
+func (s *Cache) Count() int {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	s.removeExpired()
+
 	return len(s.values)
 }
 
-// GetValue gets the value stored by specified ID.
-func (s *TimedStore) GetValue(id string) (interface{}, error) {
-	s.removeExpired()
-
+// Get gets the value cached by specified key.
+func (s *Cache) Get(key string) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	v, err := s.unsafeGet(id)
+	s.removeExpired()
+
+	v, err := s.unsafeGet(key)
 	if err != nil {
 		return nil, err
 	}
-	v.UpdateExpiration()
+	v.Postpone()
 	return v.value, nil
 }
 
-// removeExpired remove all expired values from current TimedStore instance
-// list.
-func (s *TimedStore) removeExpired() {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
+// removeExpired remove all expired values from current Cache instance list.
+func (s *Cache) removeExpired() {
 	for i := range s.values {
 		if s.values[i].IsExpired() {
 			delete(s.values, i)
@@ -97,62 +96,62 @@ func (s *TimedStore) removeExpired() {
 	}
 }
 
-// RemoveValue removes the value of specified ID.
-func (s *TimedStore) RemoveValue(id string) error {
-	s.removeExpired()
-
+// Delete deletes the specified key:value.
+func (s *Cache) Delete(key string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	_, err := s.unsafeGet(id)
+	s.removeExpired()
+
+	_, err := s.unsafeGet(key)
 	if err != nil {
 		return err
 	}
 
-	delete(s.values, id)
+	delete(s.values, key)
 	return nil
 }
 
-// SetValue sets the value of specified ID.
-func (s *TimedStore) SetValue(id string, value interface{}) error {
-	s.removeExpired()
-
+// Set sets the value of specified key.
+func (s *Cache) Set(key string, value interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	v, err := s.unsafeGet(id)
+	s.removeExpired()
+
+	v, err := s.unsafeGet(key)
 	if err != nil {
 		return err
 	}
 
-	v.UpdateExpiration()
+	v.Postpone()
 	v.value = value
 	return nil
 }
 
-// SetValueDuration modifies the lifetime of specified value.
-func (s *TimedStore) SetValueDuration(id string, d time.Duration) error {
-	s.removeExpired()
-
+// SetLifetime modifies the lifetime of specified key:value.
+func (s *Cache) SetLifetime(key string, d time.Duration) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	v, err := s.unsafeGet(id)
+	s.removeExpired()
+
+	v, err := s.unsafeGet(key)
 	if err != nil {
 		return err
 	}
 
-	v.duration = d
-	v.UpdateExpiration()
+	v.lifetime = d
+	v.Postpone()
 	return nil
 }
 
-// unsafeGet gets one TimedValue instance from its ID without locking.
-func (s *TimedStore) unsafeGet(id string) (*TimedValue, error) {
-	v, ok := s.values[id]
+// unsafeGet gets one cacheItem instance from its key without locking.
+func (s *Cache) unsafeGet(key string) (*cacheItem, error) {
+	v, ok := s.values[key]
 	if !ok {
 		return nil, errors.New(
-			fmt.Sprintf("The requested id '%s' does not exist or is expired", id))
+			fmt.Sprintf("The requested id '%s' does not exist or is expired", key))
 	}
 	return v, nil
 }
