@@ -17,8 +17,6 @@
 package raiqub
 
 import (
-	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -28,34 +26,39 @@ import (
 type Cache struct {
 	values   map[string]*cacheItem
 	lifetime time.Duration
-	mutex    *sync.Mutex
+	sync.RWMutex
 }
 
-// NewCache creates a new instance of Cache.
+// NewCache creates a new instance of Cache and defines the default lifetime for
+// new cached items.
 func NewCache(d time.Duration) *Cache {
 	return &Cache{
 		values:   make(map[string]*cacheItem),
 		lifetime: d,
-		mutex:    &sync.Mutex{},
 	}
 }
 
 // Add adds a new key:value to current Cache instance.
+//
+// Errors:
+// - DuplicatedKeyError when requested key already exists.
 func (s *Cache) Add(key string, value interface{}) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.removeExpired()
-
-	if _, ok := s.values[key]; ok {
-		return errors.New(
-			"Could not allocate the new value because of duplicated id")
-	}
+	lckStatus := s.removeExpired()
 
 	i := &cacheItem{
 		expireAt: time.Now().Add(s.lifetime),
 		lifetime: s.lifetime,
 		value:    value,
+	}
+
+	if lckStatus == ReadLocked {
+		s.RUnlock()
+		s.Lock()
+	}
+	defer s.Unlock()
+
+	if _, ok := s.values[key]; ok {
+		return DuplicatedKeyError(key)
 	}
 
 	s.values[key] = i
@@ -64,20 +67,33 @@ func (s *Cache) Add(key string, value interface{}) error {
 
 // Count gets the number of cached values by current instance.
 func (s *Cache) Count() int {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.removeExpired()
+	if s.removeExpired() == WriteLocked {
+		defer s.Unlock()
+	} else {
+		defer s.RUnlock()
+	}
 
 	return len(s.values)
 }
 
-// Get gets the value cached by specified key.
-func (s *Cache) Get(key string) (interface{}, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+// Flush deletes any cached value into current instance.
+func (s *Cache) Flush() {
+	s.Lock()
+	defer s.Unlock()
 
-	s.removeExpired()
+	s.values = make(map[string]*cacheItem)
+}
+
+// Get gets the value cached by specified key.
+//
+// Errors:
+// - InvalidKeyError when requested key could not be found.
+func (s *Cache) Get(key string) (interface{}, error) {
+	if s.removeExpired() == WriteLocked {
+		s.Unlock()
+		s.RLock()
+	}
+	defer s.RUnlock()
 
 	v, err := s.unsafeGet(key)
 	if err != nil {
@@ -87,37 +103,38 @@ func (s *Cache) Get(key string) (interface{}, error) {
 	return v.value, nil
 }
 
-// removeExpired remove all expired values from current Cache instance list.
-func (s *Cache) removeExpired() {
-	for i := range s.values {
-		if s.values[i].IsExpired() {
-			delete(s.values, i)
-		}
-	}
-}
-
 // Delete deletes the specified key:value.
+//
+// Errors:
+// - InvalidKeyError when requested key could not be found.
 func (s *Cache) Delete(key string) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.removeExpired()
+	lckStatus := s.removeExpired()
 
 	_, err := s.unsafeGet(key)
 	if err != nil {
 		return err
 	}
 
+	if lckStatus == ReadLocked {
+		s.RUnlock()
+		s.Lock()
+	}
+	defer s.Unlock()
+
 	delete(s.values, key)
 	return nil
 }
 
 // Set sets the value of specified key.
+//
+// Errors:
+// - InvalidKeyError when requested key could not be found.
 func (s *Cache) Set(key string, value interface{}) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.removeExpired()
+	if s.removeExpired() == WriteLocked {
+		s.Unlock()
+		s.RLock()
+	}
+	defer s.RUnlock()
 
 	v, err := s.unsafeGet(key)
 	if err != nil {
@@ -130,11 +147,15 @@ func (s *Cache) Set(key string, value interface{}) error {
 }
 
 // SetLifetime modifies the lifetime of specified key:value.
+//
+// Errors:
+// - InvalidKeyError when requested key could not be found.
 func (s *Cache) SetLifetime(key string, d time.Duration) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.removeExpired()
+	if s.removeExpired() == WriteLocked {
+		s.Unlock()
+		s.RLock()
+	}
+	defer s.RUnlock()
 
 	v, err := s.unsafeGet(key)
 	if err != nil {
@@ -146,12 +167,38 @@ func (s *Cache) SetLifetime(key string, d time.Duration) error {
 	return nil
 }
 
+// removeExpired remove all expired values from current Cache instance list.
+//
+// Returns the locking status of current instance.
+func (s *Cache) removeExpired() LockStatus {
+	writeLocked := false
+	s.RLock()
+	for i := range s.values {
+		if s.values[i].IsExpired() {
+			if !writeLocked {
+				s.RUnlock()
+				s.Lock()
+				writeLocked = true
+			}
+			delete(s.values, i)
+		}
+	}
+
+	if writeLocked {
+		return WriteLocked
+	} else {
+		return ReadLocked
+	}
+}
+
 // unsafeGet gets one cacheItem instance from its key without locking.
+//
+// Errors:
+// - InvalidKeyError when requested key could not be found.
 func (s *Cache) unsafeGet(key string) (*cacheItem, error) {
 	v, ok := s.values[key]
 	if !ok {
-		return nil, errors.New(
-			fmt.Sprintf("The requested id '%s' does not exist or is expired", key))
+		return nil, InvalidKeyError(key)
 	}
 	return v, nil
 }
