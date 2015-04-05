@@ -20,15 +20,21 @@ import (
 	"fmt"
 )
 
+// A DuplicatedKeyError represents an error when the provided new key to insert
+// to an dictionary already exists.
 type DuplicatedKeyError string
 
+// Error returns string representation of current instance error.
 func (e DuplicatedKeyError) Error() string {
 	return fmt.Sprintf(
 		"Could not create the '%s' key because it already exists", string(e))
 }
 
+// A InvalidKeyError represents an error when the provided key to retrieve of
+// and dictionary does not exist.
 type InvalidKeyError string
 
+// Error returns string representation of current instance error.
 func (e InvalidKeyError) Error() string {
 	return fmt.Sprintf(
 		"Could not get the '%s' key because it does not exist or it is expired",
