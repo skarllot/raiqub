@@ -31,10 +31,13 @@ const (
 	DEFAULT_SALT_SIZE = 128
 )
 
+// A Salter provides a random data generator to password salt and unique session
+// IDs.
 type Salter struct {
 	salt []byte
 }
 
+// NewSalter creates a new instance of Salter.
 func NewSalter() *Salter {
 	hash := sha256.New()
 	hash.Write(getRandomBytes(DEFAULT_SALT_SIZE))
@@ -44,6 +47,8 @@ func NewSalter() *Salter {
 	}
 }
 
+// BToken generates an array of random bytes with length as specified by size
+// parameter.
 func (self *Salter) BToken(size int) []byte {
 	mac := hmac.New(sha256.New, self.salt)
 	now := time.Now().Format(time.RFC3339Nano)
@@ -60,14 +65,18 @@ func (self *Salter) BToken(size int) []byte {
 	return macSum
 }
 
+// DefaultBToken generates an array of random bytes with default length.
 func (self *Salter) DefaultBToken() []byte {
 	return self.BToken(DEFAULT_SALT_SIZE)
 }
 
+// DefaultToken generates a base-64 string of random bytes with default length.
 func (self *Salter) DefaultToken() string {
 	return self.Token(DEFAULT_SALT_SIZE)
 }
 
+// Token generates a base-64 string of random bytes with length as specified by
+// size parameter.
 func (self *Salter) Token(size int) string {
 	return base64.URLEncoding.EncodeToString(self.BToken(size))
 }

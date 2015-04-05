@@ -17,18 +17,25 @@
 /*
 Package raiqub provides some common tasks for Web Services implementations.
 
-Creating an application context its the recommended way to avoid global
-variables and strict the access to your variables to selected functions.
-
 Cache
 
 A Cache provides in-memory key:value cache that expires after defined duration
 of time. That duration is defined when a new instance is initialized calling
 'raiqub.NewCache()' function and it is used to all cached values.
 
+The Cache can manage an application context. Creating an application context its
+the recommended way to avoid global variables and strict the access to your
+variables to selected functions.
+
 The lifetime of a value can be modified calling 'SetLifetime()'. The
 expiration time of a value is automatically updated when its value is retrieved
 by the following methods: 'Get()', 'Set()' and 'SetLifetime()'.
+
+Salter
+
+A Salter provides a random data generator to password salt and unique session
+IDs. Every token generated is used to salt next token to increase
+unpredictability of generated data.
 
 TokenCache
 

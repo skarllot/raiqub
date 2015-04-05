@@ -41,7 +41,8 @@ func NewCache(d time.Duration) *Cache {
 // Add adds a new key:value to current Cache instance.
 //
 // Errors:
-// - DuplicatedKeyError when requested key already exists.
+//
+// DuplicatedKeyError when requested key already exists.
 func (s *Cache) Add(key string, value interface{}) error {
 	lckStatus := s.removeExpired()
 
@@ -87,7 +88,8 @@ func (s *Cache) Flush() {
 // Get gets the value cached by specified key.
 //
 // Errors:
-// - InvalidKeyError when requested key could not be found.
+//
+// InvalidKeyError when requested key could not be found.
 func (s *Cache) Get(key string) (interface{}, error) {
 	if s.removeExpired() == WriteLocked {
 		s.Unlock()
@@ -106,7 +108,8 @@ func (s *Cache) Get(key string) (interface{}, error) {
 // Delete deletes the specified key:value.
 //
 // Errors:
-// - InvalidKeyError when requested key could not be found.
+//
+// InvalidKeyError when requested key could not be found.
 func (s *Cache) Delete(key string) error {
 	lckStatus := s.removeExpired()
 
@@ -128,7 +131,8 @@ func (s *Cache) Delete(key string) error {
 // Set sets the value of specified key.
 //
 // Errors:
-// - InvalidKeyError when requested key could not be found.
+//
+// InvalidKeyError when requested key could not be found.
 func (s *Cache) Set(key string, value interface{}) error {
 	if s.removeExpired() == WriteLocked {
 		s.Unlock()
@@ -149,7 +153,8 @@ func (s *Cache) Set(key string, value interface{}) error {
 // SetLifetime modifies the lifetime of specified key:value.
 //
 // Errors:
-// - InvalidKeyError when requested key could not be found.
+//
+// InvalidKeyError when requested key could not be found.
 func (s *Cache) SetLifetime(key string, d time.Duration) error {
 	if s.removeExpired() == WriteLocked {
 		s.Unlock()
@@ -194,7 +199,8 @@ func (s *Cache) removeExpired() LockStatus {
 // unsafeGet gets one cacheItem instance from its key without locking.
 //
 // Errors:
-// - InvalidKeyError when requested key could not be found.
+//
+// InvalidKeyError when requested key could not be found.
 func (s *Cache) unsafeGet(key string) (*cacheItem, error) {
 	v, ok := s.values[key]
 	if !ok {
