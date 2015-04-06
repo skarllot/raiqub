@@ -29,21 +29,33 @@ import (
 const (
 	// Defines default salt size to 1024-bit
 	DEFAULT_SALT_SIZE = 128
+	// Defines default sleep time to create unpredictability.
+	DEFAULT_SLEEP_TIME = time.Microsecond * 10
+	// Defines default number of rounds to generate time-based random data.
+	DEFAULT_SLEEP_ROUNDS = 20
 )
 
 // A Salter provides a random data generator to password salt and unique session
 // IDs.
 type Salter struct {
-	salt []byte
+	salt     []byte
+	lastDate time.Time
 }
 
 // NewSalter creates a new instance of Salter.
 func NewSalter() *Salter {
+	return NewSalterInput(getRandomBytes(DEFAULT_SALT_SIZE))
+}
+
+// NewSalterInput creates a new instance of Salter and provides an initial input
+// to salt next token.
+func NewSalterInput(input []byte) *Salter {
 	hash := sha256.New()
-	hash.Write(getRandomBytes(DEFAULT_SALT_SIZE))
+	hash.Write(input)
 
 	return &Salter{
-		salt: hash.Sum(nil),
+		salt:     hash.Sum(nil),
+		lastDate: time.Now(),
 	}
 }
 
@@ -51,17 +63,18 @@ func NewSalter() *Salter {
 // parameter.
 func (self *Salter) BToken(size int) []byte {
 	mac := hmac.New(sha256.New, self.salt)
-	now := time.Now().Format(time.RFC3339Nano)
 
 	// Tries to create unpredictable token
 	// Most strength comes from 'rand.Read'
 	// Another bits are used to avoid the chance of system random genarator
 	//   is compromissed by internal issue
 	mac.Write(getRandomBytes(size))
-	mac.Write(getRandomBytes(time.Now().Second() / 2))
-	mac.Write([]byte(now))
+	mac.Write(getRandomBytes(time.Now().Second() / 6))
+	mac.Write(getRandomBytes2(self.lastDate))
 	macSum := mac.Sum(nil)
+
 	self.salt = macSum
+	self.lastDate = time.Now()
 	return macSum
 }
 
@@ -90,4 +103,41 @@ func getRandomBytes(n int) []byte {
 	}
 
 	return b
+}
+
+// getRandomBytes2 gets a time-based random bytes.
+func getRandomBytes2(input time.Time) []byte {
+	binput := []byte(input.Format(time.RFC3339Nano))
+	diff := time.Now().Sub(input)
+	now := time.Now()
+
+	// Tries to create unpredictable bytes limited by time.
+	// Most strength comes from time differences.
+	hash := hmac.New(sha256.New, binput)
+	hash.Write(getBytesFromInt64(diff.Nanoseconds(), 2))
+	hash.Write([]byte(now.Format(time.RFC3339Nano)))
+
+	// Each round generates 2 significant random bytes. But only 1 byte is
+	// really strong.
+	for i := 0; i < DEFAULT_SLEEP_ROUNDS; i++ {
+		// The "sleep" time is almost unpredictable.
+		time.Sleep(DEFAULT_SLEEP_TIME)
+		now = time.Now()
+		diff = now.Sub(input)
+
+		hash.Write(getBytesFromInt64(diff.Nanoseconds(), 2))
+		hash.Write([]byte(now.Format(time.RFC3339Nano)))
+	}
+
+	return hash.Sum(nil)
+}
+
+// getBytesFromInt64 decomposes each Int64 byte to byte array.
+func getBytesFromInt64(val int64, size int) []byte {
+	result := make([]byte, size)
+
+	for i := 0; i < size; i++ {
+		result[i] = byte(val >> uint(8*i))
+	}
+	return result
 }

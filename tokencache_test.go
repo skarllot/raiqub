@@ -95,11 +95,25 @@ func TestTokenHandling(t *testing.T) {
 		9: 4099,
 	}
 
-	ts := NewTokenCache(time.Millisecond*10, time.Millisecond*30, TOKEN_SALT)
+	ts := NewTokenCache(time.Millisecond*100, time.Millisecond*300, TOKEN_SALT)
+	if ts.Count() != 0 {
+		t.Errorf(
+			"The token cache should be empty, but it has %d items",
+			ts.Count())
+	}
 
+	lastCount := ts.Count()
 	for i, _ := range testValues {
 		item := &testValues[i]
 		item.token = ts.Add()
+
+		if ts.Count() != lastCount+1 {
+			t.Errorf(
+				"The new token '%s' was not stored into token cache",
+				item.token)
+		}
+		lastCount = ts.Count()
+
 		err := ts.Set(item.token, item.value)
 		if err != nil {
 			t.Errorf("The token %s could not be set", item.ref)
@@ -107,7 +121,8 @@ func TestTokenHandling(t *testing.T) {
 	}
 
 	if ts.Count() != len(testValues) {
-		t.Error("The tokens count do not match")
+		t.Errorf("The tokens count do not match (%d!=%d)",
+			ts.Count(), len(testValues))
 	}
 
 	for _, i := range testValues {

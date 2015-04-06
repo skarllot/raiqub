@@ -65,6 +65,10 @@ func (s *TokenCache) Get(token string) (interface{}, error) {
 
 // Add creates a new unique token and stores it into current TokenCache
 // instance.
+//
+// The token creation will take at least 200 microseconds, but could normally
+// take 2.5 milliseconds. The token generation function it is built with
+// security over performance.
 func (s *TokenCache) Add() string {
 	strSum := s.salter.DefaultToken()
 
