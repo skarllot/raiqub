@@ -31,6 +31,11 @@ The lifetime of a value can be modified calling 'SetLifetime()'. The
 expiration time of a value is automatically updated when its value is retrieved
 by the following methods: 'Get()', 'Set()' and 'SetLifetime()'.
 
+Random
+
+A Random provides a pseudo-random generator based on syscall time deltas of
+Sleep calls. It implements io.Reader interface.
+
 Salter
 
 A Salter provides a random data generator to password salt and unique session

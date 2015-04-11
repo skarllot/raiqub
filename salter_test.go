@@ -19,37 +19,36 @@
 package raiqub
 
 import (
-	"encoding/base64"
 	"testing"
-	"time"
 )
-
-const (
-	DEFAULT_UNPRED_ROUNDS = 10
-)
-
-func TestSleepUnpredictability(t *testing.T) {
-	now := time.Now()
-	for i := 0; i < DEFAULT_UNPRED_ROUNDS; i++ {
-		time.Sleep(DEFAULT_SLEEP_TIME)
-		diff := time.Now().Sub(now)
-		t.Logf("%d: %#v (%d)", i,
-			getBytesFromInt64(diff.Nanoseconds(), 2),
-			diff.Nanoseconds())
-		now = time.Now()
-	}
-}
-
-func TestTimeRandomUnpredictability(t *testing.T) {
-	for i := 0; i < DEFAULT_UNPRED_ROUNDS; i++ {
-		t.Logf("%d: %s", i,
-			base64.StdEncoding.EncodeToString(getRandomBytes2(time.Now())))
-	}
-}
 
 func TestSaltUnpredictability(t *testing.T) {
+	dict := make(map[string]bool)
 	s := NewSalter()
+	count := 0
+
 	for i := 0; i < DEFAULT_UNPRED_ROUNDS; i++ {
-		t.Logf("%d: %s", i, s.DefaultToken())
+		val := s.DefaultToken()
+
+		if _, ok := dict[val]; ok {
+			count++
+		} else {
+			dict[val] = true
+		}
+	}
+
+	if count > 0 {
+		t.Errorf(
+			"Salter class could not generate unpredictable data: %d of %d",
+			count, DEFAULT_UNPRED_ROUNDS)
+	}
+}
+
+func BenchmarkSalter(b *testing.B) {
+	salter := NewSalter()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		salter.DefaultToken()
 	}
 }
