@@ -57,7 +57,7 @@ func TestSystemRandomUnpredictability(t *testing.T) {
 			count, DEFAULT_UNPRED_ROUNDS)
 	}
 	t.Logf(
-		"System random generator class predictability: %.2f%%",
+		"System random generator predictability: %.2f%%",
 		(float32(count)/float32(DEFAULT_UNPRED_ROUNDS))*100)
 }
 
