@@ -34,6 +34,33 @@ func HttpHeader_AccessControlAllowHeaders() *HttpHeader {
 	}
 }
 
+// HttpHeader_AccessControlAllowMethods creates a HTTP header to CORS-able API
+// indicate which HTTP methods are allowed to current resource.
+func HttpHeader_AccessControlAllowMethods() *HttpHeader {
+	return &HttpHeader{
+		"Access-Control-Allow-Methods",
+		"", // comma-separated list of HTTP methods
+	}
+}
+
+// HttpHeader_AccessControlAllowOrigin creates a HTTP header to CORS-able API
+// indicate which origin is expected.
+func HttpHeader_AccessControlAllowOrigin() *HttpHeader {
+	return &HttpHeader{
+		"Access-Control-Allow-Origin",
+		"", // http-formatted domain or asterisk to any
+	}
+}
+
+// HttpHeader_AccessControlMaxAge creates a HTTP header to CORS-able API
+// indicate how long preflight results should be cached.
+func HttpHeader_AccessControlMaxAge() *HttpHeader {
+	return &HttpHeader{
+		"Access-Control-Max-Age",
+		"", // seconds
+	}
+}
+
 // HttpHeader_ContentType_Json creates a HTTP header to define JSON content
 // type.
 func HttpHeader_ContentType_Json() *HttpHeader {
