@@ -33,6 +33,8 @@ func (s HttpHeader) Clone() *HttpHeader {
 	return &s
 }
 
+// GetReader gets HTTP header value, as defined by current instance, from
+// Request Header and sets to current instance.
 func (s *HttpHeader) GetReader(h http.Header) *HttpHeader {
 	s.Value = h.Get(s.Name)
 	return s
