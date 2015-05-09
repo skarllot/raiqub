@@ -23,12 +23,12 @@ package main
 
 import (
 	"bufio"
-	"github.com/skarllot/raiqub"
+	"github.com/skarllot/raiqub/crypt"
 	"os"
 )
 
 func main() {
-	rng := raiqub.NewRandom()
+	rng := crypt.NewRandom()
 	scanner := bufio.NewScanner(rng)
 	sout := bufio.NewWriter(os.Stdout)
 
