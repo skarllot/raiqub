@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package raiqub
+package http
 
 // HttpHeader_AccessControlAllowCredentials creates a HTTP header to CORS-able
 // API indicate that authentication is allowed.

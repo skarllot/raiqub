@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package raiqub
+package data
 
 import (
 	"time"

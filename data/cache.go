@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package raiqub
+package data
 
 import (
+	"github.com/skarllot/raiqub"
 	"sync"
 	"time"
 )
@@ -51,14 +52,14 @@ func (s *Cache) Add(key string, value interface{}) error {
 		value:    value,
 	}
 
-	if lckStatus == ReadLocked {
+	if lckStatus == raiqub.ReadLocked {
 		s.RUnlock()
 		s.Lock()
 	}
 	defer s.Unlock()
 
 	if _, ok := s.values[key]; ok {
-		return DuplicatedKeyError(key)
+		return raiqub.DuplicatedKeyError(key)
 	}
 
 	s.values[key] = i
@@ -67,7 +68,7 @@ func (s *Cache) Add(key string, value interface{}) error {
 
 // Count gets the number of cached values by current instance.
 func (s *Cache) Count() int {
-	if s.removeExpired() == WriteLocked {
+	if s.removeExpired() == raiqub.WriteLocked {
 		defer s.Unlock()
 	} else {
 		defer s.RUnlock()
@@ -89,7 +90,7 @@ func (s *Cache) Flush() {
 // Errors:
 // InvalidKeyError when requested key could not be found.
 func (s *Cache) Get(key string) (interface{}, error) {
-	if s.removeExpired() == WriteLocked {
+	if s.removeExpired() == raiqub.WriteLocked {
 		s.Unlock()
 		s.RLock()
 	}
@@ -115,7 +116,7 @@ func (s *Cache) Delete(key string) error {
 		return err
 	}
 
-	if lckStatus == ReadLocked {
+	if lckStatus == raiqub.ReadLocked {
 		s.RUnlock()
 		s.Lock()
 	}
@@ -130,7 +131,7 @@ func (s *Cache) Delete(key string) error {
 // Errors:
 // InvalidKeyError when requested key could not be found.
 func (s *Cache) Set(key string, value interface{}) error {
-	if s.removeExpired() == WriteLocked {
+	if s.removeExpired() == raiqub.WriteLocked {
 		s.Unlock()
 		s.RLock()
 	}
@@ -151,7 +152,7 @@ func (s *Cache) Set(key string, value interface{}) error {
 // Errors:
 // InvalidKeyError when requested key could not be found.
 func (s *Cache) SetLifetime(key string, d time.Duration) error {
-	if s.removeExpired() == WriteLocked {
+	if s.removeExpired() == raiqub.WriteLocked {
 		s.Unlock()
 		s.RLock()
 	}
@@ -169,7 +170,7 @@ func (s *Cache) SetLifetime(key string, d time.Duration) error {
 
 // removeExpired remove all expired values from current Cache instance list.
 // Returns the locking status of current instance.
-func (s *Cache) removeExpired() LockStatus {
+func (s *Cache) removeExpired() raiqub.LockStatus {
 	writeLocked := false
 	s.RLock()
 	for i := range s.values {
@@ -184,9 +185,9 @@ func (s *Cache) removeExpired() LockStatus {
 	}
 
 	if writeLocked {
-		return WriteLocked
+		return raiqub.WriteLocked
 	} else {
-		return ReadLocked
+		return raiqub.ReadLocked
 	}
 }
 
@@ -197,7 +198,7 @@ func (s *Cache) removeExpired() LockStatus {
 func (s *Cache) unsafeGet(key string) (*cacheItem, error) {
 	v, ok := s.values[key]
 	if !ok {
-		return nil, InvalidKeyError(key)
+		return nil, raiqub.InvalidKeyError(key)
 	}
 	return v, nil
 }

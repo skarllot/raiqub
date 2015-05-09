@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package raiqub
+package http
 
 import (
 	"net/http"

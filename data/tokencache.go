@@ -16,18 +16,19 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-package raiqub
+package data
 
 import (
 	"errors"
 	"fmt"
+	"github.com/skarllot/raiqub/crypt"
 	"time"
 )
 
 // A TokenCache provides a temporary token to uniquely identify an user session.
 type TokenCache struct {
 	cache        *Cache
-	salter       *Salter
+	salter       *crypt.Salter
 	authDuration time.Duration
 }
 
@@ -37,7 +38,7 @@ type TokenCache struct {
 func NewTokenCache(noAuth, auth time.Duration, salt string) *TokenCache {
 	return &TokenCache{
 		cache:        NewCache(noAuth),
-		salter:       NewSalter(),
+		salter:       crypt.NewSalter(),
 		authDuration: auth,
 	}
 }
