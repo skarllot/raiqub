@@ -16,63 +16,47 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-package data
+package http
 
 import (
 	"testing"
 	"time"
 )
 
-const TOKEN_SALT = "CvoTVwDw685Ve0qjGn//zmHGKvoCcslYNQT4AQ9FygSk9t6NuzBHuohyOHhqb/1omn6c"
+const TOKEN_SALT = "CvoTVwDw685Ve0qjGn//zmHGKvoCcslYNQT4AQ9FygSk9t6NuzBHuohyO" +
+	"Hhqb/1omn6c"
 
-func TestTokenAuthentication(t *testing.T) {
-	ts := NewTokenCache(time.Millisecond*10, time.Second, TOKEN_SALT)
-
-	t1 := ts.Add()
-	if err := ts.SetAsAuthenticated(t1); err != nil {
-		t.Error("The token t1 could not authenticate")
-	}
-
-	time.Sleep(time.Millisecond * 20)
-
-	if _, err := ts.Get(t1); err != nil {
-		t.Error("The token t1 expired sooner than expected")
-	}
-}
-func TestTokenExpiration(t *testing.T) {
-	ts := NewTokenCache(time.Millisecond*10, time.Millisecond*30, TOKEN_SALT)
+func TestSessionLifetime(t *testing.T) {
+	ts := NewSessionCache(time.Millisecond*10, TOKEN_SALT)
 
 	t1 := ts.Add()
 	t2 := ts.Add()
 
 	if _, err := ts.Get(t1); err != nil {
-		t.Error("The token t1 was not stored")
+		t.Error("The session t1 was not stored")
 	}
 	if _, err := ts.Get(t2); err != nil {
-		t.Error("The token t2 was not stored")
+		t.Error("The session t2 was not stored")
 	}
 
 	time.Sleep(time.Millisecond * 20)
 
 	if _, err := ts.Get(t1); err == nil {
-		t.Error("The token t1 was not expired")
+		t.Error("The session t1 was not expired")
 	}
 	if _, err := ts.Get(t2); err == nil {
-		t.Error("The token t2 was not expired")
+		t.Error("The session t2 was not expired")
 	}
 
 	if err := ts.Delete(t1); err == nil {
-		t.Error("The expired token t1 should not be removable")
+		t.Error("The expired session t1 should not be removable")
 	}
 	if err := ts.Set(t2, nil); err == nil {
-		t.Error("The expired token t2 should not be changeable")
-	}
-	if err := ts.SetAsAuthenticated(t1); err == nil {
-		t.Error("The expired token t1 should not be authenticable")
+		t.Error("The expired session t2 should not be changeable")
 	}
 }
 
-func TestTokenHandling(t *testing.T) {
+func TestSessionHandling(t *testing.T) {
 	testValues := []struct {
 		ref   string
 		token string
@@ -95,11 +79,11 @@ func TestTokenHandling(t *testing.T) {
 		9: 4099,
 	}
 
-	ts := NewTokenCache(time.Millisecond*100, time.Millisecond*300, TOKEN_SALT)
-	if ts.Count() != 0 {
+	ts := NewSessionCache(time.Millisecond*100, TOKEN_SALT)
+	if count := ts.Count(); count != 0 {
 		t.Errorf(
-			"The token cache should be empty, but it has %d items",
-			ts.Count())
+			"The session cache should be empty, but it has %d items",
+			count)
 	}
 
 	lastCount := ts.Count()
@@ -109,64 +93,64 @@ func TestTokenHandling(t *testing.T) {
 
 		if ts.Count() != lastCount+1 {
 			t.Errorf(
-				"The new token '%s' was not stored into token cache",
+				"The new session '%s' was not stored into session cache",
 				item.token)
 		}
 		lastCount = ts.Count()
 
 		err := ts.Set(item.token, item.value)
 		if err != nil {
-			t.Errorf("The token %s could not be set", item.ref)
+			t.Errorf("The session %s could not be set", item.ref)
 		}
 	}
 
 	if ts.Count() != len(testValues) {
-		t.Errorf("The tokens count do not match (%d!=%d)",
+		t.Errorf("The session count do not match (%d!=%d)",
 			ts.Count(), len(testValues))
 	}
 
 	for _, i := range testValues {
 		v, err := ts.Get(i.token)
 		if err != nil {
-			t.Errorf("The token %s could not be read", i.ref)
+			t.Errorf("The session %s could not be read", i.ref)
 		}
 		if v != i.value {
-			t.Errorf("The token %s was stored incorrectly", i.ref)
+			t.Errorf("The session %s was stored incorrectly", i.ref)
 		}
 	}
 
 	rmTestKey := testValues[rmTestIndex]
 	if err := ts.Delete(rmTestKey.token); err != nil {
-		t.Errorf("The token %s could not be removed", rmTestKey.ref)
+		t.Errorf("The session %s could not be removed", rmTestKey.ref)
 	}
 	if _, err := ts.Get(rmTestKey.token); err == nil {
-		t.Errorf("The removed token %s should not be retrieved", rmTestKey.ref)
+		t.Errorf("The removed session %s should not be retrieved", rmTestKey.ref)
 	}
 	if ts.Count() == len(testValues) {
-		t.Error("The tokens count should not match")
+		t.Error("The session count should not match")
 	}
 
 	for k, v := range changeValues {
 		item := testValues[k]
 		err := ts.Set(item.token, v)
 		if err != nil {
-			t.Errorf("The token %s could not be changed", item.ref)
+			t.Errorf("The session %s could not be changed", item.ref)
 		}
 	}
 	for k, v := range changeValues {
 		item := testValues[k]
 		v2, err := ts.Get(item.token)
 		if err != nil {
-			t.Errorf("The token %s could not be read", item.ref)
+			t.Errorf("The session %s could not be read", item.ref)
 		}
 		if v2 != v {
-			t.Errorf("The token %s was not changed", item.ref)
+			t.Errorf("The session %s was not changed", item.ref)
 		}
 	}
 }
 
-func BenchmarkTokenCreation(b *testing.B) {
-	ts := NewTokenCache(time.Millisecond, time.Second, TOKEN_SALT)
+func BenchmarkSessionCreation(b *testing.B) {
+	ts := NewSessionCache(time.Millisecond, TOKEN_SALT)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {

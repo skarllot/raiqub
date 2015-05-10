@@ -16,47 +16,46 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-package data
+package http
 
 import (
 	"errors"
 	"fmt"
 	"github.com/skarllot/raiqub/crypt"
+	"github.com/skarllot/raiqub/data"
 	"time"
 )
 
-// A TokenCache provides a temporary token to uniquely identify an user session.
-type TokenCache struct {
-	cache        *Cache
-	salter       *crypt.Salter
-	authDuration time.Duration
+// A SessionCache provides a temporary token to uniquely identify an user
+// session.
+type SessionCache struct {
+	cache  *data.Cache
+	salter *crypt.Salter
 }
 
-// NewTokenCache creates a new instance of TokenCache and defines a lifetime for
-// unauthenticated and authenticated sessions and a initial salt for random
-// input.
-func NewTokenCache(noAuth, auth time.Duration, salt string) *TokenCache {
-	return &TokenCache{
-		cache:        NewCache(noAuth),
-		salter:       crypt.NewSalter(),
-		authDuration: auth,
+// NewSessionCache creates a new instance of SessionCache and defines a lifetime
+// for sessions and a initial salt for random input.
+func NewSessionCache(d time.Duration, salt string) *SessionCache {
+	return &SessionCache{
+		cache:  data.NewCache(d),
+		salter: crypt.NewSalterInput([]byte(salt)),
 	}
 }
 
 // Count gets the number of tokens stored by current instance.
-func (s *TokenCache) Count() int {
+func (s *SessionCache) Count() int {
 	return s.cache.Count()
 }
 
 // getInvalidTokenError gets the default error when an invalid or expired token
 // is requested.
-func (s *TokenCache) getInvalidTokenError(token string) error {
+func (s *SessionCache) getInvalidTokenError(token string) error {
 	return errors.New(fmt.Sprintf(
 		"The requested token '%s' is invalid or is expired", token))
 }
 
 // Get gets the value stored by specified token.
-func (s *TokenCache) Get(token string) (interface{}, error) {
+func (s *SessionCache) Get(token string) (interface{}, error) {
 	v, err := s.cache.Get(token)
 	if err != nil {
 		return nil, s.getInvalidTokenError(token)
@@ -64,13 +63,13 @@ func (s *TokenCache) Get(token string) (interface{}, error) {
 	return v, err
 }
 
-// Add creates a new unique token and stores it into current TokenCache
+// Add creates a new unique token and stores it into current SessionCache
 // instance.
 //
 // The token creation will take at least 200 microseconds, but could normally
 // take 2.5 milliseconds. The token generation function it is built with
 // security over performance.
-func (s *TokenCache) Add() string {
+func (s *SessionCache) Add() string {
 	strSum := s.salter.DefaultToken()
 
 	err := s.cache.Add(strSum, nil)
@@ -81,8 +80,8 @@ func (s *TokenCache) Add() string {
 	return strSum
 }
 
-// Delete deletes specified token from current TokenCache instance.
-func (s *TokenCache) Delete(token string) error {
+// Delete deletes specified token from current SessionCache instance.
+func (s *SessionCache) Delete(token string) error {
 	err := s.cache.Delete(token)
 	if err != nil {
 		return s.getInvalidTokenError(token)
@@ -90,18 +89,8 @@ func (s *TokenCache) Delete(token string) error {
 	return nil
 }
 
-// SetAsAuthenticated updates the lifetime of specified token to specified
-// lifetime for authenticated sessions.
-func (s *TokenCache) SetAsAuthenticated(token string) error {
-	err := s.cache.SetLifetime(token, s.authDuration)
-	if err != nil {
-		return s.getInvalidTokenError(token)
-	}
-	return nil
-}
-
 // Set store a value to specified token.
-func (s *TokenCache) Set(token string, value interface{}) error {
+func (s *SessionCache) Set(token string, value interface{}) error {
 	err := s.cache.Set(token, value)
 	if err != nil {
 		return s.getInvalidTokenError(token)
