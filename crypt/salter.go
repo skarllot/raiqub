@@ -20,41 +20,38 @@ package crypt
 
 import (
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"io"
-	"time"
-)
-
-const (
-	// Defines default input size from system random generator to 512-bit
-	DEFAULT_SYS_RAND_SIZE = 64
-	// Defines default input size from raiqub random generator to 96-bit.
-	DEFAULT_RAIQUB_RAND_SIZE = 12
 )
 
 // A Salter provides a random data generator to password salt and unique session
 // IDs.
 type Salter struct {
-	salt []byte
-	rnd2 *Random
+	salt       []byte
+	rndSources RandomSourceList
+	sumWeight  int
 }
 
-// NewSalter creates a new instance of Salter.
-func NewSalter() *Salter {
-	return NewSalterInput(getRandomBytes(rand.Reader, DEFAULT_SYS_RAND_SIZE))
-}
+// NewSalter creates a new instance of Salter. It requires a list of sources of
+// random data and optionally an input to salt next token.
+func NewSalter(sources RandomSourceList, input []byte) *Salter {
+	if input == nil {
+		input = []byte("")
+	}
 
-// NewSalterInput creates a new instance of Salter and provides an initial input
-// to salt next token.
-func NewSalterInput(input []byte) *Salter {
 	hash := sha256.New()
 	hash.Write(input)
 
+	sum := 0
+	for _, v := range sources {
+		sum += v.Weight
+	}
+
 	return &Salter{
-		salt: hash.Sum(nil),
-		rnd2: NewRandom(),
+		salt:       hash.Sum(nil),
+		rndSources: sources,
+		sumWeight:  sum,
 	}
 }
 
@@ -63,13 +60,10 @@ func NewSalterInput(input []byte) *Salter {
 func (self *Salter) BToken(size int) []byte {
 	mac := hmac.New(sha256.New, self.salt)
 
-	// Tries to create unpredictable token
-	// Most strength comes from 'rand.Reader'
-	// Another bits are used to avoid the chance of system random genarator
-	//   is compromissed by internal issue
-	mac.Write(getRandomBytes(rand.Reader, size))
-	mac.Write(getRandomBytes(rand.Reader, time.Now().Second()/6))
-	mac.Write(getRandomBytes(self.rnd2, DEFAULT_RAIQUB_RAND_SIZE))
+	for _, v := range self.rndSources {
+		itemSize := float32(size) * (float32(v.Weight) / float32(self.sumWeight))
+		mac.Write(getRandomBytes(v.Reader, int(itemSize)))
+	}
 	macSum := mac.Sum(nil)
 
 	self.salt = macSum

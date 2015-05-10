@@ -37,8 +37,9 @@ type SessionCache struct {
 // for sessions and a initial salt for random input.
 func NewSessionCache(d time.Duration, salt string) *SessionCache {
 	return &SessionCache{
-		cache:  data.NewCache(d),
-		salter: crypt.NewSalterInput([]byte(salt)),
+		cache: data.NewCache(d),
+		salter: crypt.NewSalter(
+			crypt.NewRandomSourceListSecure(), []byte(salt)),
 	}
 }
 

@@ -24,7 +24,7 @@ import (
 
 func TestSaltUnpredictability(t *testing.T) {
 	dict := make(map[string]bool)
-	s := NewSalter()
+	s := NewSalter(NewRandomSourceList(), nil)
 	count := 0
 
 	for i := 0; i < DEFAULT_UNPRED_ROUNDS; i++ {
@@ -45,7 +45,7 @@ func TestSaltUnpredictability(t *testing.T) {
 }
 
 func BenchmarkSalter(b *testing.B) {
-	salter := NewSalter()
+	salter := NewSalter(NewRandomSourceList(), nil)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
