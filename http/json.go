@@ -30,6 +30,16 @@ const (
 	StatusUnprocessableEntity = 422
 )
 
+// A JsonError represents an error returned by JSON-based API.
+type JsonError struct {
+	// Error code.
+	Code int `json:"code,omitempty"`
+	// The fields which generated this error.
+	Fields string `json:"fields,omitempty"`
+	// A message with error details.
+	Message string `json:"message,omitempty"`
+}
+
 // JsonWrite sets response content type to JSON, sets HTTP status and serializes
 // defined content to JSON format.
 func JsonWrite(w http.ResponseWriter, status int, content interface{}) {
