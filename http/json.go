@@ -35,7 +35,9 @@ const (
 func JsonWrite(w http.ResponseWriter, status int, content interface{}) {
 	HttpHeader_ContentType_Json().SetWriter(w.Header())
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(content)
+	if content != nil {
+		json.NewEncoder(w).Encode(content)
+	}
 }
 
 // JsonRead tries to read client sent content using JSON deserialization and
