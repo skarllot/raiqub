@@ -30,16 +30,6 @@ const (
 	StatusUnprocessableEntity = 422
 )
 
-// A JsonError represents an error returned by JSON-based API.
-type JsonError struct {
-	// Error code.
-	Code int `json:"code,omitempty"`
-	// The fields which generated this error.
-	Fields string `json:"fields,omitempty"`
-	// A message with error details.
-	Message string `json:"message,omitempty"`
-}
-
 // JsonWrite sets response content type to JSON, sets HTTP status and serializes
 // defined content to JSON format.
 func JsonWrite(w http.ResponseWriter, status int, content interface{}) {
@@ -55,17 +45,20 @@ func JsonWrite(w http.ResponseWriter, status int, content interface{}) {
 func JsonRead(body io.ReadCloser, obj interface{}, w http.ResponseWriter) bool {
 	content, err := ioutil.ReadAll(io.LimitReader(body, HTTP_BODY_MAX_LENGTH))
 	if err != nil {
-		JsonWrite(w, http.StatusInternalServerError, err.Error())
+		jerr := NewJsonErrorFromError(http.StatusInternalServerError, err)
+		JsonWrite(w, jerr.Status, jerr)
 		return false
 	}
 
 	if err := body.Close(); err != nil {
-		JsonWrite(w, http.StatusInternalServerError, err.Error())
+		jerr := NewJsonErrorFromError(http.StatusInternalServerError, err)
+		JsonWrite(w, jerr.Status, jerr)
 		return false
 	}
 
 	if err := json.Unmarshal(content, obj); err != nil {
-		JsonWrite(w, StatusUnprocessableEntity, err.Error())
+		jerr := NewJsonErrorFromError(StatusUnprocessableEntity, err)
+		JsonWrite(w, jerr.Status, jerr)
 		return false
 	}
 
