@@ -25,7 +25,8 @@ import (
 	"github.com/skarllot/raiqub/docker"
 )
 
-func Example() {
+// ExampleRedisDocker demonstrates how to launch a Redis container using Raiqub.
+func Example_redisDocker() {
 	var config = struct {
 		port      uint16
 		image     string
