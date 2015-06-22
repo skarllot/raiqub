@@ -25,7 +25,7 @@ import (
 	"github.com/skarllot/raiqub/docker"
 )
 
-func ExampleRedisDocker() {
+func Example() {
 	var config = struct {
 		port      uint16
 		image     string
