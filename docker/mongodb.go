@@ -34,14 +34,14 @@ type ImageMongoDB struct {
 }
 
 // NewImageMongoDB creates a new Image pre-configured to MongoDB image.
-func NewImageMongoDB() *ImageMongoDB {
+func NewImageMongoDB(d *Docker) *ImageMongoDB {
 	return &ImageMongoDB{
-		*NewImage(NewDocker(), IMAGE_MONGODB_NAME),
+		*NewImage(d, IMAGE_MONGODB_NAME),
 	}
 }
 
-// Run creates a new MongoDB Docker container and defines its name.
-func (s *ImageMongoDB) Run(name string, args ...string) (*Container, error) {
-	tpl := NewContainerTemplate(name, MONGODB_PORT_DEFAULT)
-	return tpl, s.Image.Run(tpl, args...)
+// RunLight creates a light instance of MongoDB image.
+func (s *ImageMongoDB) RunLight(cfg *RunConfig) (*Container, error) {
+	cfg.AddArgs("--smallfiles", "--nojournal")
+	return s.Image.Run(cfg)
 }

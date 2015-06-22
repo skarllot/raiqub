@@ -25,33 +25,35 @@ import (
 	"github.com/skarllot/raiqub/docker"
 )
 
+const (
+	REDIS_PORT = 6379
+	REDIS_IMAGE = "redis"
+	LISTEN_TIMEOUT = 45 * time.Second
+)
+
 // ExampleRedisDocker demonstrates how to launch a Redis container using Raiqub.
 func Example_redisDocker() {
-	var config = struct {
-		port      uint16
-		image     string
-		container string
-		timeout   time.Duration
-	}{
-		6379,
-		"redis",
-		"redis-example",
-		1 * time.Minute,
-	}
-
-	image := docker.NewImage(docker.NewDocker(), config.image)
-	if err := image.Setup(); err != nil {
+	dockerBin := docker.NewDocker()
+	if !dockerBin.HasBin() {
 		// Ignore test compliance when Docker is not installed.
 		fmt.Println("Container created")
 		fmt.Println("Connected to Redis server")
 		fmt.Println("+OK")
 		fmt.Println("$5")
 		fmt.Println("world")
+		return	
+	}
+	
+	image := docker.NewImage(dockerBin, REDIS_IMAGE)
+	if err := image.Setup(); err != nil {
+		fmt.Println("Error setting up Docker environment:", err)
 		return
 	}
 
-	redis := docker.NewContainerTemplate(config.container, config.port)
-	if err := image.Run(redis); err != nil {
+	cfg := docker.NewRunConfig()
+	cfg.Detach()
+	redis, err := image.Run(cfg)
+	if err != nil {
 		fmt.Println("Error trying to create a container:", err)
 		return
 	}
@@ -59,19 +61,20 @@ func Example_redisDocker() {
 	defer redis.Kill()
 	fmt.Println("Container created")
 
-	if err := redis.WaitStartup(config.timeout); err != nil {
+	if err := redis.WaitStartup(LISTEN_TIMEOUT); err != nil {
 		fmt.Println("Timeout waiting for Redis instance to respond")
 		return
 	}
 
-	var ip string
-	var err error
-	if ip, err = redis.IP(); err != nil {
-		fmt.Println("Error trying to get instance IP:", err)
+	inspect, err := redis.Inspect()
+	if err != nil {
+		fmt.Println("Error trying to inspect container:", err)
 		return
 	}
+	ip := inspect[0].NetworkSettings.IPAddress
+	port, prot := inspect[0].NetworkSettings.SplitPort(0)
 
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", ip, config.port))
+	conn, err := net.Dial(prot, fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
 		fmt.Println("Could not connect to Redis server:", err)
 		return

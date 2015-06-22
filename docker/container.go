@@ -34,17 +34,24 @@ import (
 type Container struct {
 	docker *Docker
 	id     string
-	name   string
-	port   uint16
 }
 
-// NewContainerTemplate creates a Container template to define its name and
-// port.
-func NewContainerTemplate(name string, port uint16) *Container {
-	return &Container{
-		name: name,
-		port: port,
+// Inspect returns container configuration.
+func (s *Container) Inspect() ([]Inspect, error) {
+	out, err := exec.Command(s.docker.binCmd, "inspect", s.id).Output()
+	if err != nil {
+		return nil, err
 	}
+	
+	var list []Inspect
+	if err := json.NewDecoder(bytes.NewReader(out)).Decode(&list); err != nil {
+		return nil, err
+	}
+	if len(list) == 0 {
+		return nil, fmt.Errorf("Empty output when inspecting container")
+	}
+	
+	return list, nil
 }
 
 // Kill terminates current container process.
@@ -54,29 +61,17 @@ func (s *Container) Kill() error {
 
 // IP returns the network address of current container.
 func (s *Container) IP() (string, error) {
-	out, err := exec.Command(s.docker.binCmd, "inspect", s.id).Output()
+	inspect, err := s.Inspect()
 	if err != nil {
 		return "", err
 	}
-
-	type netSettings struct {
-		IPAddress string
+	
+	ip := inspect[0].NetworkSettings.IPAddress
+	if ip == "" {
+		return "", fmt.Errorf("Could not find an IP. Not running?")
 	}
-	type container struct {
-		NetworkSettings netSettings
-	}
-	var c []container
-	if err := json.NewDecoder(bytes.NewReader(out)).Decode(&c); err != nil {
-		return "", err
-	}
-	if len(c) == 0 {
-		return "", fmt.Errorf("Empty output when inspecting container")
-	}
-	if ip := c[0].NetworkSettings.IPAddress; ip != "" {
-		return ip, nil
-	}
-
-	return "", fmt.Errorf("Could not find an IP. Not running?")
+	
+	return ip, nil
 }
 
 // Remove erases current container from Docker.
@@ -85,14 +80,15 @@ func (s *Container) Remove() error {
 }
 
 // WaitStartup blocks current thread until current container begins to listen
-// defined port.
+// exposed port.
 func (s *Container) WaitStartup(timeout time.Duration) error {
-	ip, err := s.IP()
+	inspect, err := s.Inspect()
 	if err != nil {
-		return fmt.Errorf("Error retrieving IP address: %v", err)
+		return fmt.Errorf("Error inspecting container: %v", err)
 	}
 
-	addr := fmt.Sprintf("%s:%d", ip, s.port)
+	port, _ := inspect[0].NetworkSettings.SplitPort(0)
+	addr := fmt.Sprintf("%s:%d", inspect[0].NetworkSettings.IPAddress, port)
 	return awaitPeer(addr, timeout)
 }
 

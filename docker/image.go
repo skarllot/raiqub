@@ -66,31 +66,30 @@ func (s *Image) Pull() error {
 
 // Run creates a new Docker container as defined by current image and container
 // template.
-func (s *Image) Run(template *Container, args ...string) error {
-	cmdArgs := []string{
-		"run", "-d", "-p",
-		fmt.Sprintf("%d:%d", template.port, template.port),
-		"--name", template.name,
-	}
-	cmdArgs = append(cmdArgs, args...)
-	cmdArgs = append(cmdArgs, s.name)
+func (s *Image) Run(cfg *RunConfig) (*Container, error) {
+	args := []string{"run"}
+	args = append(args, cfg.Options...)
+	args = append(args, s.name)
+	args = append(args, cfg.Args...)
 
-	cmd := exec.Command(s.docker.binCmd, cmdArgs...)
+	cmd := exec.Command(s.docker.binCmd, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%v%v", stderr.String(), err)
+		return nil, fmt.Errorf("%v%v", stderr.String(), err)
 	}
 
-	template.docker = s.docker
-	template.id = strings.TrimSpace(stdout.String())
-	if template.id == "" {
-		return fmt.Errorf(
+	container := &Container{
+		docker: s.docker,
+		id:     strings.TrimSpace(stdout.String()),
+	}
+	if container.id == "" {
+		return nil, fmt.Errorf(
 			"Unexpected empty output when running docker container")
 	}
 
-	return nil
+	return container, nil
 }
 
 // Setup check if Docker binary is available and pull current image from
