@@ -52,6 +52,11 @@ func (s *Image) Exists() bool {
 	return bytes.Contains(out, []byte(s.name))
 }
 
+// Name returns image name from current instance.
+func (s *Image) Name() string {
+	return s.name
+}
+
 // Pull retrieves current Docker image from Docker repository.
 //
 // Returns DockerPullError on error.

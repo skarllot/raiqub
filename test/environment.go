@@ -78,6 +78,20 @@ func (s *Environment) Applicability() bool {
 	return s.dockerBin.HasBin()
 }
 
+// Network returns network information from current running container.
+func (s *Environment) Network() ([]docker.NetworkNode, error) {
+	if s.container == nil {
+		return nil, NotRunningError(s.image.Name())
+	}
+	
+	nodes, err := s.container.NetworkNodes()
+	if err != nil {
+		return nil, err
+	}
+	
+	return nodes, nil
+}
+
 // Run starts a new Docker instance for testing environment.
 func (s *Environment) Run() bool {
 	if err := s.image.Setup(); err != nil {
