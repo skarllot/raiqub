@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	REDIS_PORT = 6379
-	REDIS_IMAGE = "redis"
+	REDIS_PORT     = 6379
+	REDIS_IMAGE    = "redis"
 	LISTEN_TIMEOUT = 45 * time.Second
 )
 
@@ -41,9 +41,9 @@ func Example_redisDocker() {
 		fmt.Println("+OK")
 		fmt.Println("$5")
 		fmt.Println("world")
-		return	
+		return
 	}
-	
+
 	image := docker.NewImage(dockerBin, REDIS_IMAGE)
 	if err := image.Setup(); err != nil {
 		fmt.Println("Error setting up Docker environment:", err)
@@ -66,15 +66,13 @@ func Example_redisDocker() {
 		return
 	}
 
-	inspect, err := redis.Inspect()
+	nodes, err := redis.NetworkNodes()
 	if err != nil {
-		fmt.Println("Error trying to inspect container:", err)
+		fmt.Println("Error trying to get network information:", err)
 		return
 	}
-	ip := inspect[0].NetworkSettings.IPAddress
-	port, prot := inspect[0].NetworkSettings.SplitPort(0)
 
-	conn, err := net.Dial(prot, fmt.Sprintf("%s:%d", ip, port))
+	conn, err := net.Dial(nodes[0].Protocol, nodes[0].FormatDialAddress())
 	if err != nil {
 		fmt.Println("Could not connect to Redis server:", err)
 		return
