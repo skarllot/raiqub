@@ -22,6 +22,7 @@ package docker
  */
 
 import (
+	"bytes"
 	"os/exec"
 )
 
@@ -46,4 +47,22 @@ func NewDocker() *Docker {
 func (s *Docker) HasBin() bool {
 	_, err := exec.LookPath(s.binCmd)
 	return err == nil
+}
+
+// Run executes especified command on Docker.
+//
+// Returns ExternalCmdError on error.
+func (s *Docker) Run(cmd string, args ...string) (string, error) {
+	cmdArgs := make([]string, 0, len(args)+1)
+	cmdArgs = append(cmdArgs, cmd)
+	cmdArgs = append(cmdArgs, args...)
+
+	exe := exec.Command(s.binCmd, cmdArgs...)
+	var stdout, stderr bytes.Buffer
+	exe.Stdout, exe.Stderr = &stdout, &stderr
+
+	if err := exe.Run(); err != nil {
+		return stdout.String(), ExternalCmdError{err, stderr.String()}
+	}
+	return stdout.String(), nil
 }

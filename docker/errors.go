@@ -20,7 +20,8 @@ import (
 	"fmt"
 )
 
-// A DockerBinNotFound represents a error when Docker binary could not be found.
+// A DockerBinNotFound represents an error when Docker binary could not be
+// found.
 type DockerBinNotFound string
 
 // Error returns string representation of current instance error.
@@ -28,16 +29,24 @@ func (e DockerBinNotFound) Error() string {
 	return fmt.Sprintf("The docker binary '%s' was not found", string(e))
 }
 
-// A DockerPullError represents a error when Docker fails to pull a image from
-// repository.
-type DockerPullError struct {
-	// The error returned by Docker.
+// A ExternalCmdError represents an error when running external command fails.
+type ExternalCmdError struct {
+	// The error returned native library.
 	InnerError error
 	// Output from command-line.
 	Output string
 }
 
 // Error returns string representation of current instance error.
-func (e DockerPullError) Error() string {
-	return fmt.Sprintf("%v: %s", e.InnerError, e.Output)
+func (e ExternalCmdError) Error() string {
+	return fmt.Sprintf("Error running external command: %v", e.InnerError)
+}
+
+// A UnexpectedOutputError represents an error when an external command prints
+// an unexpected content.
+type UnexpectedOutputError string
+
+// Error returns string representation of current instance error.
+func (e UnexpectedOutputError) Error() string {
+	return fmt.Sprint(string(e))
 }

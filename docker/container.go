@@ -22,11 +22,11 @@ package docker
  */
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -54,17 +54,20 @@ func (s *Container) HasExposedPorts() bool {
 
 // Inspect returns container configuration.
 func (s *Container) Inspect() ([]Inspect, error) {
-	out, err := exec.Command(s.docker.binCmd, "inspect", s.id).Output()
+	out, err := s.docker.Run("inspect", s.id)
 	if err != nil {
 		return nil, err
 	}
 
 	var list []Inspect
-	if err := json.NewDecoder(bytes.NewReader(out)).Decode(&list); err != nil {
-		return nil, err
+	err = json.NewDecoder(strings.NewReader(out)).Decode(&list)
+	if err != nil {
+		return nil, UnexpectedOutputError(fmt.Sprintf(
+			"Error parsing output when inspecting container: %v", err))
 	}
 	if len(list) == 0 {
-		return nil, fmt.Errorf("Empty output when inspecting container")
+		return nil, UnexpectedOutputError(
+			"Empty output when inspecting container")
 	}
 
 	return list, nil
