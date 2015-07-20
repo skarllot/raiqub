@@ -33,8 +33,10 @@ func (e DockerBinNotFound) Error() string {
 type ExternalCmdError struct {
 	// The error returned native library.
 	InnerError error
-	// Output from command-line.
-	Output string
+	// Standard error output from command-line.
+	Stderr string
+	// Standard output from command-line.
+	Stdout string
 }
 
 // Error returns string representation of current instance error.

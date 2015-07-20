@@ -24,10 +24,11 @@ package docker
 import (
 	"encoding/json"
 	"fmt"
-	"net"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/skarllot/raiqub"
 )
 
 // A Container represents a Docker container.
@@ -75,7 +76,28 @@ func (s *Container) Inspect() ([]Inspect, error) {
 
 // Kill terminates current container process.
 func (s *Container) Kill() error {
-	return exec.Command(s.docker.binCmd, "kill", s.id).Run()
+	err := exec.Command(s.docker.binCmd, "kill", s.id).Run()
+	if err != nil {
+		return err
+	}
+
+	stopped := raiqub.WaitFunc(
+		250*time.Millisecond, 30*time.Second, func() bool {
+			inspect, err := s.Inspect()
+			if err != nil || len(inspect) == 0 {
+				return true
+			}
+			if !inspect[0].State.Running {
+				return true
+			}
+
+			return false
+		})
+	if !stopped {
+		err = fmt.Errorf("Timeout waiting '%s' container to stop", s.id)
+	}
+
+	return err
 }
 
 // NetworkNodes returns the network addresses and exposed ports of current
@@ -131,21 +153,12 @@ func (s *Container) WaitStartup(timeout time.Duration) error {
 		return fmt.Errorf("Current container has no exposed ports")
 	}
 
-	return awaitPeer(nodes[0], timeout)
-}
-
-func awaitPeer(netNode NetworkNode, timeout time.Duration) error {
-	// Based on http://camlistore.org/pkg/netutil/#AwaitReachable
-	max := time.Now().Add(timeout)
-	for time.Now().Before(max) {
-		c, err := net.Dial(netNode.Protocol, netNode.FormatDialAddress())
-		if err == nil {
-			c.Close()
-			return nil
-		}
-		time.Sleep(100 * time.Millisecond)
+	ok := raiqub.WaitPeerListening(
+		nodes[0].Protocol, nodes[0].FormatDialAddress(), timeout)
+	if !ok {
+		err = fmt.Errorf("%s unreachable for %v",
+			nodes[0].FormatDialAddress(), timeout)
 	}
 
-	return fmt.Errorf("%v unreachable for %v",
-		netNode.FormatDialAddress(), timeout)
+	return err
 }

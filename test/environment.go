@@ -25,7 +25,7 @@ import (
 
 const (
 	IMAGE_REDIS     = "redis"
-	STARTUP_TIMEOUT = 3 * time.Minute
+	STARTUP_TIMEOUT = 30 * time.Second
 )
 
 // A Environment represents a Docker testing environment.
@@ -83,33 +83,51 @@ func (s *Environment) Network() ([]docker.NetworkNode, error) {
 	if s.container == nil {
 		return nil, NotRunningError(s.image.Name())
 	}
-	
+
 	nodes, err := s.container.NetworkNodes()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return nodes, nil
 }
 
 // Run starts a new Docker instance for testing environment.
 func (s *Environment) Run() bool {
 	if err := s.image.Setup(); err != nil {
-		s.test.Fatal("Error setting up Docker:", err)
+		s.test.Fatalf("Error setting up Docker: %v", err)
 		return false
 	}
 
 	var err error
 	s.container, err = s.run()
 	if err != nil {
+		if s.container != nil {
+			s.container.Kill()
+			s.container.Remove()
+		}
+
 		s.test.Fatal("Error running a new Docker container:", err)
 		return false
 	}
 
 	if s.container.HasExposedPorts() {
 		if err := s.container.WaitStartup(STARTUP_TIMEOUT); err != nil {
+			s.container.Kill()
+			s.container.Remove()
 			s.test.Fatal("Timeout waiting Docker instance to respond:", err)
 			return false
+		}
+	} else {
+		timeout := time.After(STARTUP_TIMEOUT)
+		for {
+			select {
+			case <-timeout:
+				inspect, err := s.container.Inspect()
+				if err != nil || !inspect[0].State.Running {
+					return false
+				}
+			}
 		}
 	}
 

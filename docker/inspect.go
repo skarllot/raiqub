@@ -19,14 +19,23 @@ package docker
 import (
 	"strconv"
 	"strings"
+	"time"
 )
 
 // A Inspect represents a return value from Docker inspect command.
 type Inspect struct {
+	Created         time.Time
+	Driver          string
+	ExecDriver      string
+	HostnamePath    string
+	HostsPath       string
 	Id              string
 	Image           string
 	Name            string
 	NetworkSettings NetworkSettings
+	Path            string
+	RestartCount    int
+	State           State
 }
 
 // A NetworkSettings represents the network settings returned from inspect
@@ -44,6 +53,19 @@ type NetworkSettings struct {
 type HostPublish struct {
 	HostIp   string
 	HostPort string
+}
+
+// A State represents current container state
+type State struct {
+	Error      string
+	ExitCode   int
+	FinishedAt time.Time
+	OOMKilled  bool
+	Paused     bool
+	Pid        int
+	Restarting bool
+	Running    bool
+	StartedAt  time.Time
 }
 
 // PortAt returns expose and publish port information at especified index.

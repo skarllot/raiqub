@@ -62,7 +62,8 @@ func (s *Docker) Run(cmd string, args ...string) (string, error) {
 	exe.Stdout, exe.Stderr = &stdout, &stderr
 
 	if err := exe.Run(); err != nil {
-		return stdout.String(), ExternalCmdError{err, stderr.String()}
+		return stdout.String(), ExternalCmdError{
+			err, stderr.String(), stdout.String()}
 	}
 	return stdout.String(), nil
 }
