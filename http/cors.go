@@ -32,12 +32,14 @@ const (
 	DEFAULT_CORS_ORIGIN           = "*"
 )
 
+// A CORSHandler allows to create a CORS-able API.
 type CORSHandler struct {
 	PredicateOrigin raiqub.PredicateStringFunc
 	Headers         []string
 	ExposedHeaders  []string
 }
 
+// NewCORSHandler creates a new CORSHandler with default values.
 func NewCORSHandler() *CORSHandler {
 	return &CORSHandler{
 		PredicateOrigin: raiqub.TrueForAll,
@@ -49,7 +51,8 @@ func NewCORSHandler() *CORSHandler {
 	}
 }
 
-func (s *CORSHandler) CreateOptionsRoutes(routes Routes) Routes {
+// CreatePreflight creates HTTP routes that handles pre-flight requests.
+func (s *CORSHandler) CreatePreflight(routes Routes) Routes {
 	list := make(Routes, 0, len(routes))
 	hList := make(map[string]*CORSPreflight, len(routes))
 	for _, v := range routes {
@@ -77,17 +80,21 @@ func (s *CORSHandler) CreateOptionsRoutes(routes Routes) Routes {
 	return list
 }
 
+// A CORSPreflight represents a HTTP server that handles pre-flight requests.
 type CORSPreflight struct {
 	CORSHandler
 	Methods        []string
 	UseCredentials bool
 }
 
+// ServeHTTP handle a pre-flight request.
 func (s *CORSPreflight) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	origin := HttpHeader_Origin().GetReader(r.Header)
 	status := http.StatusBadRequest
+	msg := ""
 	defer func() {
 		w.WriteHeader(status)
+		w.Write([]byte(msg))
 	}()
 
 	if origin.Value != "" {
@@ -100,8 +107,12 @@ func (s *CORSPreflight) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		header := strings.Split(
 			r.Header.Get("Access-Control-Request-Headers"),
 			", ")
+		if len(header) == 1 && header[0] == "" {
+			header = []string{}
+		}
 
 		if !raiqub.StringSlice(s.Methods).Exists(method) {
+			msg = "Method not allowed"
 			return
 		}
 
@@ -111,6 +122,7 @@ func (s *CORSPreflight) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			if len(header) > 0 &&
 				!raiqub.StringSlice(s.Headers).ExistsAllIgnoreCase(header) {
+				msg = "Header not allowed"
 				return
 			}
 			HttpHeader_AccessControlAllowHeaders().
@@ -133,4 +145,41 @@ func (s *CORSPreflight) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		status = http.StatusNotFound
 	}
+}
+
+// A CORSMiddleware represents a HTTP middleware that handle HTTP headers for
+// CORS-able API.
+type CORSMiddleware struct {
+	CORSHandler
+	UseCredentials bool
+}
+
+// Handle is a HTTP handler for CORS-able API.
+func (s *CORSMiddleware) Handle(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		origin := HttpHeader_Origin().GetReader(r.Header)
+		if r.Method != DEFAULT_CORS_PREFLIGHT_METHOD && origin.Value != "" {
+			if !s.PredicateOrigin(origin.Value) {
+				return
+			}
+
+			HttpHeader_AccessControlAllowOrigin().
+				SetValue(origin.Value).
+				SetWriter(w.Header())
+			HttpHeader_AccessControlAllowCredentials().
+				SetValue(strconv.FormatBool(s.UseCredentials)).
+				SetWriter(w.Header())
+			if len(s.Headers) > 0 {
+				HttpHeader_AccessControlAllowHeaders().
+					SetValue(strings.Join(s.Headers, ", ")).
+					SetWriter(w.Header())
+			} else {
+				HttpHeader_AccessControlAllowHeaders().
+					SetWriter(w.Header())
+			}
+		}
+		next.ServeHTTP(w, r)
+	}
+
+	return http.HandlerFunc(fn)
 }
