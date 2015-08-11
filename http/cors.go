@@ -65,7 +65,11 @@ func (s *CORSHandler) CreatePreflight(routes Routes) Routes {
 			}
 			hList[v.Path] = preflight
 		}
+
 		preflight.Methods = append(preflight.Methods, v.Method)
+		if v.MustAuth {
+			preflight.UseCredentials = true
+		}
 	}
 
 	for k, v := range hList {
@@ -103,10 +107,11 @@ func (s *CORSPreflight) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		method := r.Header.Get("Access-Control-Request-Method")
+		method := HttpHeader_AccessControlRequestMethod().
+			GetReader(r.Header).Value
 		header := strings.Split(
-			r.Header.Get("Access-Control-Request-Headers"),
-			", ")
+			HttpHeader_AccessControlRequestHeaders().
+				GetReader(r.Header).Value, ", ")
 		if len(header) == 1 && header[0] == "" {
 			header = []string{}
 		}
@@ -133,7 +138,9 @@ func (s *CORSPreflight) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		HttpHeader_AccessControlAllowMethods().
 			SetValue(strings.Join(s.Methods, ", ")).
 			SetWriter(w.Header())
-		origin.SetWriter(w.Header())
+		HttpHeader_AccessControlAllowOrigin().
+			SetValue(origin.Value).
+			SetWriter(w.Header())
 		HttpHeader_AccessControlAllowCredentials().
 			SetValue(strconv.FormatBool(s.UseCredentials)).
 			SetWriter(w.Header())
