@@ -75,7 +75,16 @@ func NewRedisEnvironment(t *testing.T) *Environment {
 // Applicability tests whether current testing environment can be run on current
 // host.
 func (s *Environment) Applicability() bool {
-	return s.dockerBin.HasBin()
+	if !s.dockerBin.HasBin() {
+		return false
+	}
+
+	_, err := s.dockerBin.Run("ps")
+	if err != nil {
+		s.test.Log("Docker is installed but is not running or current user " +
+			"is lacking permissions")
+	}
+	return err == nil
 }
 
 // Network returns network information from current running container.
