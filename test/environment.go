@@ -34,19 +34,19 @@ type Environment struct {
 	image     *docker.Image
 	container *docker.Container
 	run       func() (*docker.Container, error)
-	test      *testing.T
+	test      testing.TB
 }
 
 // NewMongoDBEnvironment creates a instance that allows to use MongoDB for
 // testing
-func NewMongoDBEnvironment(t *testing.T) *Environment {
+func NewMongoDBEnvironment(tb testing.TB) *Environment {
 	d := docker.NewDocker()
 	mongo := docker.NewImageMongoDB(d)
 
 	return &Environment{
 		dockerBin: d,
 		image:     &mongo.Image,
-		test:      t,
+		test:      tb,
 		run: func() (*docker.Container, error) {
 			cfg := docker.NewRunConfig()
 			cfg.Detach()
@@ -56,14 +56,14 @@ func NewMongoDBEnvironment(t *testing.T) *Environment {
 }
 
 // NewRedisEnvironment creates a instance that allows to use Redis for testing.
-func NewRedisEnvironment(t *testing.T) *Environment {
+func NewRedisEnvironment(tb testing.TB) *Environment {
 	d := docker.NewDocker()
 	redis := docker.NewImage(d, IMAGE_REDIS)
 
 	return &Environment{
 		dockerBin: d,
 		image:     redis,
-		test:      t,
+		test:      tb,
 		run: func() (*docker.Container, error) {
 			cfg := docker.NewRunConfig()
 			cfg.Detach()
