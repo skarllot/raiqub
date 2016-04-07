@@ -34,19 +34,19 @@ type Environment struct {
 	image     *docker.Image
 	container *docker.Container
 	run       func() (*docker.Container, error)
-	test      testing.TB
+	test      *testing.T
 }
 
 // NewMongoDBEnvironment creates a instance that allows to use MongoDB for
 // testing
-func NewMongoDBEnvironment(tb testing.TB) *Environment {
+func NewMongoDBEnvironment(t *testing.T) *Environment {
 	d := docker.NewDocker()
 	mongo := docker.NewImageMongoDB(d)
 
 	return &Environment{
 		dockerBin: d,
 		image:     &mongo.Image,
-		test:      tb,
+		test:      t,
 		run: func() (*docker.Container, error) {
 			cfg := docker.NewRunConfig()
 			cfg.Detach()
@@ -56,14 +56,14 @@ func NewMongoDBEnvironment(tb testing.TB) *Environment {
 }
 
 // NewRedisEnvironment creates a instance that allows to use Redis for testing.
-func NewRedisEnvironment(tb testing.TB) *Environment {
+func NewRedisEnvironment(t *testing.T) *Environment {
 	d := docker.NewDocker()
 	redis := docker.NewImage(d, IMAGE_REDIS)
 
 	return &Environment{
 		dockerBin: d,
 		image:     redis,
-		test:      tb,
+		test:      t,
 		run: func() (*docker.Container, error) {
 			cfg := docker.NewRunConfig()
 			cfg.Detach()
@@ -75,16 +75,7 @@ func NewRedisEnvironment(tb testing.TB) *Environment {
 // Applicability tests whether current testing environment can be run on current
 // host.
 func (s *Environment) Applicability() bool {
-	if !s.dockerBin.HasBin() {
-		return false
-	}
-
-	_, err := s.dockerBin.Run("ps")
-	if err != nil {
-		s.test.Log("Docker is installed but is not running or current user " +
-			"is lacking permissions")
-	}
-	return err == nil
+	return s.dockerBin.HasBin()
 }
 
 // Network returns network information from current running container.

@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/raiqub/dot"
+	"github.com/skarllot/raiqub"
 )
 
 // A Container represents a Docker container.
@@ -81,7 +81,7 @@ func (s *Container) Kill() error {
 		return err
 	}
 
-	stopped := dot.WaitFunc(
+	stopped := raiqub.WaitFunc(
 		250*time.Millisecond, 30*time.Second, func() bool {
 			inspect, err := s.Inspect()
 			if err != nil || len(inspect) == 0 {
@@ -153,7 +153,7 @@ func (s *Container) WaitStartup(timeout time.Duration) error {
 		return fmt.Errorf("Current container has no exposed ports")
 	}
 
-	ok := dot.WaitPeerListening(
+	ok := raiqub.WaitPeerListening(
 		nodes[0].Protocol, nodes[0].FormatDialAddress(), timeout)
 	if !ok {
 		err = fmt.Errorf("%s unreachable for %v",
